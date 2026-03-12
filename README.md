@@ -13,7 +13,7 @@ Built on top of [vatly/vatly-fluent-php](https://github.com/Vatly/vatly-fluent-p
 ## Installation
 
 ```bash
-composer require vatly/vatly-laravel:v0.1.0-alpha.1
+composer require vatly/vatly-laravel:v0.3.0-alpha.1
 ```
 
 Pin to an exact version. This is an alpha release and the API will change.
