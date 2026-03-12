@@ -6,40 +6,12 @@ namespace Vatly\Laravel\Tests\Models;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Vatly\Fluent\Events\SubscriptionStarted;
 use Vatly\Laravel\Models\Subscription;
 use Vatly\Laravel\Tests\BaseTestCase;
 
 class SubscriptionTest extends BaseTestCase
 {
     use RefreshDatabase;
-
-    /** @test */
-    public function it_creates_from_webhook_event()
-    {
-        $user = User::factory()->create([
-            'vatly_id' => 'customer_123',
-        ]);
-
-        $event = new SubscriptionStarted(
-            customerId: 'customer_123',
-            subscriptionId: 'subscription_123',
-            planId: 'subscription_plan_123',
-            type: Subscription::DEFAULT_TYPE,
-            name: 'Premium Plan',
-            quantity: 3,
-        );
-
-        $subscription = Subscription::createFromWebhookEvent($event, $user);
-
-        $this->assertInstanceOf(Subscription::class, $subscription);
-        $this->assertEquals('subscription_123', $subscription->vatly_id);
-        $this->assertEquals('subscription_plan_123', $subscription->plan_id);
-        $this->assertEquals('Premium Plan', $subscription->name);
-        $this->assertEquals(Subscription::DEFAULT_TYPE, $subscription->type);
-        $this->assertEquals(3, $subscription->quantity);
-        $this->assertEquals($user->id, $subscription->owner_id);
-    }
 
     /** @test */
     public function it_implements_subscription_interface_getters()

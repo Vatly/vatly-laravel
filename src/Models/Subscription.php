@@ -12,11 +12,7 @@ use Vatly\Fluent\Actions\CancelSubscription;
 use Vatly\Fluent\Actions\SwapSubscriptionPlan;
 use Vatly\Fluent\Contracts\BillableInterface;
 use Vatly\Fluent\Contracts\SubscriptionInterface;
-use Vatly\Fluent\Events\SubscriptionCanceledImmediately;
-use Vatly\Fluent\Events\SubscriptionCanceledWithGracePeriod;
-use Vatly\Fluent\Events\SubscriptionStarted;
 use Vatly\Fluent\Exceptions\FeatureUnavailableException;
-use Vatly\Laravel\Repositories\EloquentCustomerRepository;
 
 /**
  * @property BillableInterface $owner
@@ -213,48 +209,10 @@ class Subscription extends Model implements SubscriptionInterface
     }
 
     /**
-     * Create a subscription from a webhook event.
-     */
-    public static function createFromWebhookEvent(SubscriptionStarted $event, BillableInterface $owner): self
-    {
-        return self::create([
-            'owner_type' => $owner->getMorphClass(),
-            'owner_id' => $owner->getKey(),
-            'vatly_id' => $event->subscriptionId,
-            'plan_id' => $event->planId,
-            'name' => $event->name,
-            'type' => $event->type,
-            'quantity' => $event->quantity,
-        ]);
-    }
-
-    /**
      * Cancel the subscription at Vatly.
      */
     public function cancel(): void
     {
         app()->make(CancelSubscription::class)->execute($this->vatly_id);
-    }
-
-    /**
-     * Handle immediate cancellation from webhook.
-     */
-    public static function handleImmediateCancellation(SubscriptionCanceledImmediately $event): self
-    {
-        $subscription = self::where('vatly_id', $event->subscriptionId)->firstOrFail();
-        $subscription->update(['ends_at' => Carbon::now()]);
-
-        return $subscription;
-    }
-
-    /**
-     * Handle grace period cancellation from webhook.
-     */
-    public static function handleGracePeriodCancellation(SubscriptionCanceledWithGracePeriod $event): self
-    {
-        $subscription = self::where('vatly_id', $event->subscriptionId)->firstOrFail();
-        $subscription->update(['ends_at' => $event->endsAt]);
-
-        return $subscription;
     }
 }

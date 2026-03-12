@@ -35,12 +35,4 @@ class VatlyHelpers
     {
         VatlyWebhookCall::cleanUp();
     }
-
-    public static function verifyWebhookSignature(string $webhookSignature, string $jsonPayload, string $secret): bool
-    {
-        return hash_equals(
-            $webhookSignature,
-            hash_hmac('sha256', $jsonPayload, $secret)
-        );
-    }
 }

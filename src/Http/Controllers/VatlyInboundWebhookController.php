@@ -4,21 +4,16 @@ declare(strict_types=1);
 
 namespace Vatly\Laravel\Http\Controllers;
 
-use DateTimeImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
-use Vatly\Fluent\Contracts\EventDispatcherInterface;
-use Vatly\Fluent\Contracts\WebhookCallRepositoryInterface;
-use Vatly\Fluent\Events\WebhookReceived;
-use Vatly\Fluent\Webhooks\WebhookEventFactory;
+use Vatly\Fluent\Exceptions\InvalidWebhookSignatureException;
+use Vatly\Fluent\Webhooks\WebhookProcessor;
 
 class VatlyInboundWebhookController
 {
     public function __construct(
-        private readonly WebhookEventFactory $eventFactory,
-        private readonly WebhookCallRepositoryInterface $webhookCallRepository,
-        private readonly EventDispatcherInterface $dispatcher,
+        private readonly WebhookProcessor $processor,
     ) {
         //
     }
@@ -29,26 +24,15 @@ class VatlyInboundWebhookController
             Log::info('Vatly Webhook request received!', $request->all());
         }
 
-        $resourceId = $request->get('resourceId');
-
-        if (!empty($resourceId)) {
-            $event = $this->eventFactory->parsePayload($request->all());
-
-            // Record the webhook call
-            $this->webhookCallRepository->record(
-                eventName: $event->eventName,
-                resourceId: $event->resourceId,
-                resourceName: $event->resourceName,
-                payload: $event->object,
-                raisedAt: new DateTimeImmutable($event->raisedAt),
-                testmode: $event->testmode,
-                vatlyCustomerId: $event->getCustomerId(),
+        try {
+            $this->processor->handle(
+                payload: (string) $request->getContent(),
+                signature: $request->header('X-Vatly-Signature', ''),
             );
-
-            // Dispatch the event
-            $this->dispatcher->dispatch($event);
+        } catch (InvalidWebhookSignatureException) {
+            return response('', 403);
         }
 
-        return response(status: 201);
+        return response('', 201);
     }
 }
