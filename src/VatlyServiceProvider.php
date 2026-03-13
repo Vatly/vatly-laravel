@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Vatly\Laravel;
 
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Vatly\Fluent\Actions\CancelSubscription;
 use Vatly\Fluent\Actions\CreateCheckout;
@@ -21,23 +20,17 @@ use Vatly\Fluent\Contracts\EventDispatcherInterface;
 use Vatly\Fluent\Contracts\OrderRepositoryInterface;
 use Vatly\Fluent\Contracts\SubscriptionRepositoryInterface;
 use Vatly\Fluent\Contracts\WebhookCallRepositoryInterface;
-use Vatly\Fluent\Events\OrderPaid;
-use Vatly\Fluent\Events\SubscriptionCanceledImmediately;
-use Vatly\Fluent\Events\SubscriptionCanceledWithGracePeriod;
-use Vatly\Fluent\Events\SubscriptionStarted;
-use Vatly\Fluent\Events\WebhookReceived;
+use Vatly\Fluent\Webhooks\Reactions\CancelSubscriptionOnCanceled;
 use Vatly\Fluent\Webhooks\Reactions\StoreOrderOnPaid;
+use Vatly\Fluent\Webhooks\Reactions\SyncSubscriptionOnStarted;
+use Vatly\Fluent\Webhooks\SignatureVerifier;
+use Vatly\Fluent\Webhooks\WebhookEventFactory;
+use Vatly\Fluent\Webhooks\WebhookProcessor;
 use Vatly\Laravel\Events\LaravelEventDispatcher;
-use Vatly\Laravel\Listeners\CancelSubscriptionImmediatelyListener;
-use Vatly\Laravel\Listeners\CancelSubscriptionWithGracePeriodListener;
-use Vatly\Laravel\Listeners\CascadeVatlyWebhookEvents;
-use Vatly\Laravel\Listeners\StartSubscriptionListener;
 use Vatly\Laravel\Repositories\EloquentCustomerRepository;
 use Vatly\Laravel\Repositories\EloquentOrderRepository;
 use Vatly\Laravel\Repositories\EloquentSubscriptionRepository;
 use Vatly\Laravel\Repositories\EloquentWebhookCallRepository;
-use Vatly\Fluent\Webhooks\SignatureVerifier;
-use Vatly\Fluent\Webhooks\WebhookEventFactory;
 
 class VatlyServiceProvider extends ServiceProvider
 {
@@ -51,14 +44,13 @@ class VatlyServiceProvider extends ServiceProvider
         $this->registerApiClient();
         $this->registerActions();
         $this->registerRepositories();
-        $this->registerWebhookUtilities();
         $this->registerEventDispatcher();
+        $this->registerWebhookProcessor();
     }
 
     public function boot(): void
     {
         $this->bootRoutes();
-        $this->bootEventListeners();
         $this->bootPublishing();
     }
 
@@ -105,16 +97,10 @@ class VatlyServiceProvider extends ServiceProvider
 
     private function registerRepositories(): void
     {
+        $this->app->bind(CustomerRepositoryInterface::class, EloquentCustomerRepository::class);
         $this->app->bind(SubscriptionRepositoryInterface::class, EloquentSubscriptionRepository::class);
         $this->app->bind(OrderRepositoryInterface::class, EloquentOrderRepository::class);
-        $this->app->bind(CustomerRepositoryInterface::class, EloquentCustomerRepository::class);
         $this->app->bind(WebhookCallRepositoryInterface::class, EloquentWebhookCallRepository::class);
-    }
-
-    private function registerWebhookUtilities(): void
-    {
-        $this->app->singleton(SignatureVerifier::class);
-        $this->app->singleton(WebhookEventFactory::class);
     }
 
     private function registerEventDispatcher(): void
@@ -122,22 +108,39 @@ class VatlyServiceProvider extends ServiceProvider
         $this->app->bind(EventDispatcherInterface::class, LaravelEventDispatcher::class);
     }
 
+    private function registerWebhookProcessor(): void
+    {
+        $this->app->singleton(SignatureVerifier::class);
+        $this->app->singleton(WebhookEventFactory::class);
+
+        $this->app->singleton(WebhookProcessor::class, function () {
+            $config = $this->app->make(ConfigurationInterface::class);
+
+            return new WebhookProcessor(
+                signatureVerifier: $this->app->make(SignatureVerifier::class),
+                eventFactory: $this->app->make(WebhookEventFactory::class),
+                repository: $this->app->make(WebhookCallRepositoryInterface::class),
+                dispatcher: $this->app->make(EventDispatcherInterface::class),
+                webhookSecret: $config->getWebhookSecret() ?? '',
+                reactions: [
+                    new SyncSubscriptionOnStarted(
+                        $this->app->make(SubscriptionRepositoryInterface::class),
+                        $this->app->make(EventDispatcherInterface::class),
+                    ),
+                    new CancelSubscriptionOnCanceled(
+                        $this->app->make(SubscriptionRepositoryInterface::class),
+                    ),
+                    new StoreOrderOnPaid(
+                        $this->app->make(OrderRepositoryInterface::class),
+                    ),
+                ],
+            );
+        });
+    }
+
     private function bootRoutes(): void
     {
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
-    }
-
-    private function bootEventListeners(): void
-    {
-        // Core webhook events mapped to Laravel listeners
-        Event::listen(WebhookReceived::class, CascadeVatlyWebhookEvents::class);
-        Event::listen(SubscriptionStarted::class, StartSubscriptionListener::class);
-        Event::listen(SubscriptionCanceledImmediately::class, CancelSubscriptionImmediatelyListener::class);
-        Event::listen(SubscriptionCanceledWithGracePeriod::class, CancelSubscriptionWithGracePeriodListener::class);
-        Event::listen(OrderPaid::class, function (OrderPaid $event) {
-            $reaction = new StoreOrderOnPaid($this->app->make(OrderRepositoryInterface::class));
-            $reaction->handle($event);
-        });
     }
 
     private function bootPublishing(): void

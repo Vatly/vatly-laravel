@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Vatly\Laravel\Exceptions;
 
-class IncompleteInformationException extends BaseVatlyException
+use Vatly\Fluent\Exceptions\VatlyException;
+
+class IncompleteInformationException extends VatlyException
 {
     /**
      * @return static

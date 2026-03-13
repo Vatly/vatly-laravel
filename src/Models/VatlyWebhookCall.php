@@ -6,8 +6,6 @@ namespace Vatly\Laravel\Models;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Arr;
-use Vatly\Laravel\Events\Inbound\VatlyWebhookCallReceived;
 
 /**
  * @property int $id
@@ -21,7 +19,7 @@ use Vatly\Laravel\Events\Inbound\VatlyWebhookCallReceived;
  */
 class VatlyWebhookCall extends Model
 {
-    public const int DEFAULT_DAYS_TO_RETAIN = 7;
+    public const DEFAULT_DAYS_TO_RETAIN = 7;
 
     protected $table = 'vatly_webhook_calls';
 
@@ -40,26 +38,6 @@ class VatlyWebhookCall extends Model
         'raised_at' => 'datetime',
         'testmode' => 'boolean',
     ];
-
-    public static function record(VatlyWebhookCallReceived $event): void
-    {
-        /** @phpstan-ignore identical.alwaysFalse */
-        if (self::DEFAULT_DAYS_TO_RETAIN === 0) {
-            return;
-        }
-
-        $customerId = $event->customerId ?? Arr::get($event->object, 'data.customerId');
-
-        static::create([
-            'event_name' => $event->eventName,
-            'resource_id' => $event->resourceId,
-            'resource_name' => $event->resourceName,
-            'vatly_customer_id' => $customerId,
-            'object' => $event->object,
-            'raised_at' => Carbon::parse($event->raisedAt),
-            'testmode' => $event->testmode,
-        ]);
-    }
 
     public static function cleanUp(int $daysToRetain = self::DEFAULT_DAYS_TO_RETAIN): int
     {

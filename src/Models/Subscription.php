@@ -12,11 +12,7 @@ use Vatly\Fluent\Actions\CancelSubscription;
 use Vatly\Fluent\Actions\SwapSubscriptionPlan;
 use Vatly\Fluent\Contracts\BillableInterface;
 use Vatly\Fluent\Contracts\SubscriptionInterface;
-use Vatly\Fluent\Events\SubscriptionCanceledImmediately;
-use Vatly\Fluent\Events\SubscriptionCanceledWithGracePeriod;
-use Vatly\Fluent\Events\SubscriptionStarted;
 use Vatly\Fluent\Exceptions\FeatureUnavailableException;
-use Vatly\Laravel\Repositories\EloquentCustomerRepository;
 
 /**
  * @property BillableInterface $owner
@@ -25,6 +21,7 @@ use Vatly\Laravel\Repositories\EloquentCustomerRepository;
  * @property string $vatly_id
  * @property string $name
  * @property int $quantity
+ * @property Carbon|null $trial_ends_at
  * @property Carbon|null $ends_at
  *
  * @method static create(array<string, mixed> $array)
@@ -131,11 +128,10 @@ class Subscription extends Model implements SubscriptionInterface
         $action = app()->make(SwapSubscriptionPlan::class);
         $response = $action->execute($this->vatly_id, $planId, $options);
 
-        $this->update([
-            'type' => $type,
-            'plan_id' => $response->subscriptionPlanId,
-            'quantity' => $response->quantity,
-        ]);
+        $this->type = $type;
+        $this->plan_id = $response->subscriptionPlanId;
+        $this->quantity = $response->quantity;
+        $this->save();
 
         return $this;
     }
@@ -187,45 +183,23 @@ class Subscription extends Model implements SubscriptionInterface
         $action = app()->make(\Vatly\Fluent\Actions\GetSubscription::class);
         $response = $action->execute($this->vatly_id);
 
-        $updates = [
-            'plan_id' => $response->subscriptionPlanId,
-            'name' => $response->name,
-            'quantity' => $response->quantity,
-        ];
+        $this->plan_id = $response->subscriptionPlanId;
+        $this->name = $response->name;
+        $this->quantity = $response->quantity;
 
-        // Determine ends_at from API response
         if ($response->endedAt !== null) {
-            $updates['ends_at'] = Carbon::parse($response->endedAt);
+            $this->ends_at = Carbon::parse($response->endedAt);
         } elseif ($response->cancelledAt !== null) {
-            // Subscription is cancelled but may still be in grace period
-            // The actual end date would be set via webhook, but we can note it's cancelled
-            $updates['ends_at'] = $this->ends_at ?? Carbon::parse($response->cancelledAt);
+            $this->ends_at = $this->ends_at ?? Carbon::parse($response->cancelledAt);
         }
 
-        // Sync trial end date if present
         if ($response->trialUntil !== null) {
-            $updates['trial_ends_at'] = Carbon::parse($response->trialUntil);
+            $this->trial_ends_at = Carbon::parse($response->trialUntil);
         }
 
-        $this->update($updates);
+        $this->save();
 
         return $this;
-    }
-
-    /**
-     * Create a subscription from a webhook event.
-     */
-    public static function createFromWebhookEvent(SubscriptionStarted $event, BillableInterface $owner): self
-    {
-        return self::create([
-            'owner_type' => $owner->getMorphClass(),
-            'owner_id' => $owner->getKey(),
-            'vatly_id' => $event->subscriptionId,
-            'plan_id' => $event->planId,
-            'name' => $event->name,
-            'type' => $event->type,
-            'quantity' => $event->quantity,
-        ]);
     }
 
     /**
@@ -234,27 +208,5 @@ class Subscription extends Model implements SubscriptionInterface
     public function cancel(): void
     {
         app()->make(CancelSubscription::class)->execute($this->vatly_id);
-    }
-
-    /**
-     * Handle immediate cancellation from webhook.
-     */
-    public static function handleImmediateCancellation(SubscriptionCanceledImmediately $event): self
-    {
-        $subscription = self::where('vatly_id', $event->subscriptionId)->firstOrFail();
-        $subscription->update(['ends_at' => Carbon::now()]);
-
-        return $subscription;
-    }
-
-    /**
-     * Handle grace period cancellation from webhook.
-     */
-    public static function handleGracePeriodCancellation(SubscriptionCanceledWithGracePeriod $event): self
-    {
-        $subscription = self::where('vatly_id', $event->subscriptionId)->firstOrFail();
-        $subscription->update(['ends_at' => $event->endsAt]);
-
-        return $subscription;
     }
 }

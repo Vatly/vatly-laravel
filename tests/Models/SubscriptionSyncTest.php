@@ -42,17 +42,16 @@ class SubscriptionSyncTest extends BaseTestCase
 
         $subscription = Mockery::mock(Subscription::class)->makePartial();
         $subscription->vatly_id = 'subscription_test123';
-        $subscription->shouldReceive('update')
+        $subscription->shouldReceive('save')
             ->once()
-            ->with(Mockery::on(function ($data) {
-                return $data['plan_id'] === 'plan_new'
-                    && $data['name'] === 'New Plan'
-                    && $data['quantity'] === 5;
-            }));
+            ->andReturn(true);
 
         $result = $subscription->sync();
 
         $this->assertSame($subscription, $result);
+        $this->assertSame('plan_new', $subscription->plan_id);
+        $this->assertSame('New Plan', $subscription->name);
+        $this->assertSame(5, $subscription->quantity);
     }
 
     /** @test */
@@ -79,14 +78,14 @@ class SubscriptionSyncTest extends BaseTestCase
 
         $subscription = Mockery::mock(Subscription::class)->makePartial();
         $subscription->vatly_id = 'subscription_test123';
-        $subscription->shouldReceive('update')
+        $subscription->shouldReceive('save')
             ->once()
-            ->with(Mockery::on(function ($data) use ($endedAt) {
-                return $data['ends_at'] instanceof Carbon
-                    && $data['ends_at']->toIso8601String() === Carbon::parse($endedAt)->toIso8601String();
-            }));
+            ->andReturn(true);
 
         $subscription->sync();
+
+        $this->assertInstanceOf(Carbon::class, $subscription->ends_at);
+        $this->assertEquals(Carbon::parse($endedAt)->toIso8601String(), $subscription->ends_at->toIso8601String());
     }
 
     /** @test */
@@ -113,12 +112,12 @@ class SubscriptionSyncTest extends BaseTestCase
 
         $subscription = Mockery::mock(Subscription::class)->makePartial();
         $subscription->vatly_id = 'subscription_test123';
-        $subscription->shouldReceive('update')
+        $subscription->shouldReceive('save')
             ->once()
-            ->with(Mockery::on(function ($data) {
-                return isset($data['trial_ends_at']) && $data['trial_ends_at'] instanceof Carbon;
-            }));
+            ->andReturn(true);
 
         $subscription->sync();
+
+        $this->assertInstanceOf(Carbon::class, $subscription->trial_ends_at);
     }
 }

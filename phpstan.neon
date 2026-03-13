@@ -12,55 +12,37 @@ parameters:
     ignoreErrors:
         # Traits used via "use" statements aren't directly instantiated
         - '#^Trait .+ is used zero times and is not analysed\.$#'
-        
+
         # BillableInterface is from external package, getMorphClass() is Laravel magic
         - '#^Call to an undefined method Vatly\\Fluent\\Contracts\\BillableInterface::getMorphClass\(\)\.$#'
-        
+
         # Static factory methods on exceptions are safe
-        - 
+        -
             message: '#^Unsafe usage of new static\(\)\.$#'
             path: src/Exceptions/*
         -
             message: '#^Unsafe usage of new static\(\)\.$#'
             path: src/VatlyApiActions/*Response.php
-        
+
         # API package returns BaseResource, runtime type is correct
         -
             message: '#^Parameter .+ expects .+, Vatly\\API\\Resources\\BaseResource.* given\.$#'
             path: src/VatlyApiActions/*
-        
-        # MorphTo covariance is a known Larastan limitation  
+
+        # MorphTo covariance is a known Larastan limitation
         -
             message: '#^Method Vatly\\Laravel\\Models\\Order::owner\(\) should return Illuminate\\Database\\Eloquent\\Relations\\MorphTo.+ but returns .+\.$#'
             path: src/Models/Order.php
         -
             message: '#^Method Vatly\\Laravel\\Models\\Subscription::owner\(\) should return Illuminate\\Database\\Eloquent\\Relations\\MorphTo.+ but returns .+\.$#'
             path: src/Models/Subscription.php
-        
+
         # Model uses Billable trait which adds vatlyId() method
         -
             message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model::vatlyId\(\)\.$#'
             path: src/Builders/CheckoutBuilder.php
-        
-        # Model uses Billable trait which adds vatly_id property
-        -
-            message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model::\$vatly_id\.$#'
-            path: src/Exceptions/CustomerAlreadyCreated.php
-        
+
         # getOwner() returns Model with Billable trait (implements BillableInterface at runtime)
         -
             message: '#^Method .+::getOwner\(\) should return Vatly\\Fluent\\Contracts\\BillableInterface but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
             path: src/Models/Order.php
-        
-        # Static methods called via events (dynamic handler registration)
-        -
-            message: '#^Call to an undefined static method Vatly\\Laravel\\Models\\Subscription::handle.+AtVatly\(\)\.$#'
-            path: src/Listeners/*
-        -
-            message: '#^Call to an undefined static method Vatly\\Laravel\\Models\\Subscription::createFromSubscriptionWasStartedAtVatly\(\)\.$#'
-            path: src/Listeners/StartSubscription.php
-        
-        # Event method called dynamically
-        -
-            message: '#^Call to an undefined method .+::vatlyEventName\(\)\.$#'
-            path: src/Listeners/LogUnsupportedVatlyWebhookCallReceived.php

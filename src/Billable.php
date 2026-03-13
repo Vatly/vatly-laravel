@@ -19,7 +19,7 @@ use Vatly\Laravel\Concerns\ManagesSubscriptions;
  * Your model should also implement BillableInterface:
  *
  * ```php
- * use Vatly\Laravel\Contracts\BillableInterface;
+ * use Vatly\Fluent\Contracts\BillableInterface;
  * use Vatly\Laravel\Billable;
  *
  * class User extends Model implements BillableInterface
