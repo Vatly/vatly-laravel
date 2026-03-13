@@ -5,14 +5,11 @@ declare(strict_types=1);
 namespace Vatly\Laravel\Builders;
 
 use Illuminate\Database\Eloquent\Model;
-use Vatly\Laravel\Builders\Concerns\ManagesTestmode;
 use Vatly\Laravel\VatlyApiActions\CreateVatlyCheckoutResponse;
 use Vatly\Laravel\VatlyConfig;
 
 class SubscriptionBuilder
 {
-    use ManagesTestmode;
-
     protected int $quantity = 1;
 
     protected string $planId;
@@ -65,7 +62,6 @@ class SubscriptionBuilder
     {
         return $this
             ->checkoutBuilder
-            ->withTestmode($this->testmode)
             ->create(
                 items: collect([$this->getSubscriptionPayload()]),
                 redirectUrlSuccess: $this->redirectUrlSuccess,

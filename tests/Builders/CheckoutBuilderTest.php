@@ -57,7 +57,6 @@ class CheckoutBuilderTest extends BaseTestCase
             'customerId' => null,
             'redirectUrlSuccess' => 'https://example.com/success',
             'redirectUrlCanceled' => 'https://example.com/canceled',
-            'testmode' => false,
             'metadata' => null,
         ], $payload);
     }

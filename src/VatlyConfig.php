@@ -28,9 +28,13 @@ class VatlyConfig implements ConfigurationInterface
         return config('vatly.webhook_secret');
     }
 
+    /**
+     * Testmode is inferred from the API key prefix.
+     * Keys starting with 'test_' indicate testmode.
+     */
     public function isTestmode(): bool
     {
-        return config('vatly.testmode', false);
+        return str_starts_with($this->getApiKey(), 'test_');
     }
 
     public function getDefaultRedirectUrlSuccess(): string
@@ -46,11 +50,5 @@ class VatlyConfig implements ConfigurationInterface
     public function getBillableModel(): string
     {
         return config('vatly.billable_model', \App\Models\User::class);
-    }
-
-    // Legacy alias
-    public function getTestMode(): bool
-    {
-        return $this->isTestmode();
     }
 }

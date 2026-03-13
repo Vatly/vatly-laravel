@@ -13,8 +13,6 @@ trait ManagesCheckouts
 {
     public function checkout(): CheckoutBuilder
     {
-        $this->ensureHasVatlyCustomer();
-
         return new CheckoutBuilder(
             owner: $this,
             createVatlyCheckout: app()->make(CreateVatlyCheckout::class),
@@ -23,8 +21,6 @@ trait ManagesCheckouts
 
     public function subscribe(): SubscriptionBuilder
     {
-        $this->ensureHasVatlyCustomer();
-
         return new SubscriptionBuilder(
             vatlyConfig: app()->make(VatlyConfig::class),
             owner: $this,
