@@ -182,29 +182,20 @@ class Subscription extends Model implements SubscriptionInterface
         $action = app()->make(\Vatly\Fluent\Actions\GetSubscription::class);
         $response = $action->execute($this->vatly_id);
 
-        $updates = [
-            'plan_id' => $response->subscriptionPlanId,
-            'name' => $response->name,
-            'quantity' => $response->quantity,
-        ];
+        $this->plan_id = $response->subscriptionPlanId;
+        $this->name = $response->name;
+        $this->quantity = $response->quantity;
 
-        // Determine ends_at from API response
         if ($response->endedAt !== null) {
-            $updates['ends_at'] = Carbon::parse($response->endedAt);
+            $this->ends_at = Carbon::parse($response->endedAt);
         } elseif ($response->cancelledAt !== null) {
-            // Subscription is cancelled but may still be in grace period
-            // The actual end date would be set via webhook, but we can note it's cancelled
-            $updates['ends_at'] = $this->ends_at ?? Carbon::parse($response->cancelledAt);
+            $this->ends_at = $this->ends_at ?? Carbon::parse($response->cancelledAt);
         }
 
-        // Sync trial end date if present
         if ($response->trialUntil !== null) {
-            $updates['trial_ends_at'] = Carbon::parse($response->trialUntil);
+            $this->trial_ends_at = Carbon::parse($response->trialUntil);
         }
 
-        foreach ($updates as $key => $value) {
-            $this->{$key} = $value;
-        }
         $this->save();
 
         return $this;
