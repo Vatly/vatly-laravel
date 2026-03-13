@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class VatlyWebhookCall extends Model
 {
-    public const int DEFAULT_DAYS_TO_RETAIN = 7;
+    public const DEFAULT_DAYS_TO_RETAIN = 7;
 
     protected $table = 'vatly_webhook_calls';
 
