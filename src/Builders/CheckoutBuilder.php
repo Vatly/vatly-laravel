@@ -6,15 +6,12 @@ namespace Vatly\Laravel\Builders;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
-use Vatly\Laravel\Builders\Concerns\ManagesTestmode;
 use Vatly\Laravel\Exceptions\IncompleteInformationException;
 use Vatly\Laravel\VatlyApiActions\CreateVatlyCheckout;
 use Vatly\Laravel\VatlyApiActions\CreateVatlyCheckoutResponse;
 
 class CheckoutBuilder
 {
-    use ManagesTestmode;
-
     protected string $redirectUrlSuccess;
 
     protected string $redirectUrlCanceled;
@@ -47,7 +44,6 @@ class CheckoutBuilder
             'customerId' => $this->owner->vatlyId(),
             'redirectUrlSuccess' => $this->redirectUrlSuccess,
             'redirectUrlCanceled' => $this->redirectUrlCanceled,
-            'testmode' => $this->testmode,
             'metadata' => $this->metadata,
         ], $overrides);
 
@@ -65,7 +61,6 @@ class CheckoutBuilder
         array $payloadOverrides = [],
     ): CreateVatlyCheckoutResponse {
         $this
-            ->withTestmode($this->testmode)
             ->withItems($items)
             ->withRedirectUrlSuccess($redirectUrlSuccess)
             ->withRedirectUrlCanceled($redirectUrlCanceled);
