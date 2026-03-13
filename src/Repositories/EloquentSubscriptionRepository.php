@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Vatly\Laravel\Repositories;
 
+use Carbon\Carbon;
 use Vatly\Fluent\Contracts\BillableInterface;
 use Vatly\Fluent\Contracts\CustomerRepositoryInterface;
 use Vatly\Fluent\Contracts\SubscriptionInterface;
 use Vatly\Fluent\Contracts\SubscriptionRepositoryInterface;
+use Vatly\Fluent\Data\StoreSubscriptionData;
+use Vatly\Fluent\Data\UpdateSubscriptionData;
 use Vatly\Laravel\Models\Subscription;
 
 class EloquentSubscriptionRepository implements SubscriptionRepositoryInterface
@@ -51,29 +54,35 @@ class EloquentSubscriptionRepository implements SubscriptionRepositoryInterface
         return $subscription !== null && $subscription->isActive();
     }
 
-    /**
-     * @param array<string, mixed> $attributes
-     */
-    public function create(array $attributes): SubscriptionInterface
+    public function store(StoreSubscriptionData $data): SubscriptionInterface
     {
-        if (isset($attributes['customer_id']) && !isset($attributes['owner_type'])) {
-            $owner = $this->customers->findByVatlyIdOrFail($attributes['customer_id']);
-            $attributes['owner_type'] = $owner->getMorphClass();
-            $attributes['owner_id'] = $owner->getKey();
-            unset($attributes['customer_id']);
-        }
+        $owner = $this->customers->findByVatlyIdOrFail($data->customerId);
 
-        return Subscription::create($attributes);
+        return Subscription::create([
+            'vatly_id' => $data->vatlyId,
+            'owner_type' => $owner->getMorphClass(),
+            'owner_id' => $owner->getKey(),
+            'type' => $data->type,
+            'plan_id' => $data->planId,
+            'name' => $data->name,
+            'quantity' => $data->quantity,
+        ]);
     }
 
-    /**
-     * @param array<string, mixed> $attributes
-     */
-    public function update(SubscriptionInterface $subscription, array $attributes): SubscriptionInterface
+    public function update(SubscriptionInterface $subscription, UpdateSubscriptionData $data): SubscriptionInterface
     {
         if ($subscription instanceof Subscription) {
-            foreach ($attributes as $key => $value) {
-                $subscription->{$key} = $value;
+            if ($data->planId !== null) {
+                $subscription->plan_id = $data->planId;
+            }
+            if ($data->name !== null) {
+                $subscription->name = $data->name;
+            }
+            if ($data->quantity !== null) {
+                $subscription->quantity = $data->quantity;
+            }
+            if ($data->endsAt !== null) {
+                $subscription->ends_at = Carbon::instance($data->endsAt);
             }
             $subscription->save();
         }

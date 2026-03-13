@@ -21,6 +21,7 @@ use Vatly\Fluent\Exceptions\FeatureUnavailableException;
  * @property string $vatly_id
  * @property string $name
  * @property int $quantity
+ * @property Carbon|null $trial_ends_at
  * @property Carbon|null $ends_at
  *
  * @method static create(array<string, mixed> $array)

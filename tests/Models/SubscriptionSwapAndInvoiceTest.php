@@ -43,17 +43,16 @@ class SubscriptionSwapAndInvoiceTest extends BaseTestCase
 
         $subscription = Mockery::mock(Subscription::class)->makePartial();
         $subscription->vatly_id = 'subscription_test123';
-        $subscription->shouldReceive('update')
+        $subscription->shouldReceive('save')
             ->once()
-            ->with(Mockery::on(function ($data) {
-                return $data['type'] === 'premium'
-                    && $data['plan_id'] === 'plan_premium'
-                    && $data['quantity'] === 1;
-            }));
+            ->andReturn(true);
 
         $result = $subscription->swapAndInvoice('premium', 'plan_premium');
 
         $this->assertSame($subscription, $result);
+        $this->assertSame('premium', $subscription->type);
+        $this->assertSame('plan_premium', $subscription->plan_id);
+        $this->assertSame(1, $subscription->quantity);
     }
 
     /** @test */
@@ -82,7 +81,9 @@ class SubscriptionSwapAndInvoiceTest extends BaseTestCase
 
         $subscription = Mockery::mock(Subscription::class)->makePartial();
         $subscription->vatly_id = 'subscription_test123';
-        $subscription->shouldReceive('update')->once();
+        $subscription->shouldReceive('save')
+            ->once()
+            ->andReturn(true);
 
         $subscription->swapAndInvoice('enterprise', 'plan_enterprise', ['prorate' => true]);
         
@@ -114,7 +115,9 @@ class SubscriptionSwapAndInvoiceTest extends BaseTestCase
 
         $subscription = Mockery::mock(Subscription::class)->makePartial();
         $subscription->vatly_id = 'subscription_test123';
-        $subscription->shouldReceive('update')->once();
+        $subscription->shouldReceive('save')
+            ->once()
+            ->andReturn(true);
 
         $subscription->swapAndInvoice('basic', 'plan_basic', [
             'applyImmediately' => false,
