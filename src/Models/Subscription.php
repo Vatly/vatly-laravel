@@ -127,11 +127,10 @@ class Subscription extends Model implements SubscriptionInterface
         $action = app()->make(SwapSubscriptionPlan::class);
         $response = $action->execute($this->vatly_id, $planId, $options);
 
-        $this->update([
-            'type' => $type,
-            'plan_id' => $response->subscriptionPlanId,
-            'quantity' => $response->quantity,
-        ]);
+        $this->type = $type;
+        $this->plan_id = $response->subscriptionPlanId;
+        $this->quantity = $response->quantity;
+        $this->save();
 
         return $this;
     }
@@ -203,7 +202,10 @@ class Subscription extends Model implements SubscriptionInterface
             $updates['trial_ends_at'] = Carbon::parse($response->trialUntil);
         }
 
-        $this->update($updates);
+        foreach ($updates as $key => $value) {
+            $this->{$key} = $value;
+        }
+        $this->save();
 
         return $this;
     }

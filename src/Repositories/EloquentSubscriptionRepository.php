@@ -72,7 +72,10 @@ class EloquentSubscriptionRepository implements SubscriptionRepositoryInterface
     public function update(SubscriptionInterface $subscription, array $attributes): SubscriptionInterface
     {
         if ($subscription instanceof Subscription) {
-            $subscription->update($attributes);
+            foreach ($attributes as $key => $value) {
+                $subscription->{$key} = $value;
+            }
+            $subscription->save();
         }
 
         return $subscription;

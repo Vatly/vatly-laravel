@@ -56,7 +56,10 @@ class EloquentOrderRepository implements OrderRepositoryInterface
     public function update(OrderInterface $order, array $attributes): OrderInterface
     {
         if ($order instanceof Order) {
-            $order->update($attributes);
+            foreach ($attributes as $key => $value) {
+                $order->{$key} = $value;
+            }
+            $order->save();
         }
 
         return $order;
