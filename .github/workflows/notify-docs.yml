@@ -13,6 +13,6 @@ jobs:
       - name: Trigger vatly-docs sync
         uses: peter-evans/repository-dispatch@v3
         with:
-          token: ${{ secrets.DOCS_SYNC_TOKEN }}
+          token: ${{ secrets.VATLY_DOCS_DISPATCH_TOKEN }}
           repository: vatly/vatly-docs
           event-type: sync-laravel-docs
