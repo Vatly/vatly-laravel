@@ -6,7 +6,7 @@ namespace Vatly\Laravel\Tests\Models;
 
 use Mockery;
 use Vatly\API\Types\Link;
-use Vatly\Fluent\Actions\CreateBillingUpdateLink;
+use Vatly\Fluent\Actions\CreateSubscriptionBillingUpdateLink;
 use Vatly\Laravel\Models\Subscription;
 use Vatly\Laravel\Tests\BaseTestCase;
 
@@ -23,13 +23,13 @@ class SubscriptionCreateBillingUpdateLinkTest extends BaseTestCase
     {
         $expectedUrl = 'https://checkout.vatly.com/billing-update/abc123';
 
-        $mockAction = Mockery::mock(CreateBillingUpdateLink::class);
+        $mockAction = Mockery::mock(CreateSubscriptionBillingUpdateLink::class);
         $mockAction->shouldReceive('execute')
             ->once()
             ->with('subscription_test123', [])
             ->andReturn(new Link($expectedUrl, 'text/html'));
 
-        app()->instance(CreateBillingUpdateLink::class, $mockAction);
+        app()->instance(CreateSubscriptionBillingUpdateLink::class, $mockAction);
 
         $subscription = new Subscription(['vatly_id' => 'subscription_test123']);
         $url = $subscription->createBillingUpdateLink();
@@ -42,13 +42,13 @@ class SubscriptionCreateBillingUpdateLinkTest extends BaseTestCase
     {
         $prefillData = ['billingAddress' => ['city' => 'Amsterdam']];
 
-        $mockAction = Mockery::mock(CreateBillingUpdateLink::class);
+        $mockAction = Mockery::mock(CreateSubscriptionBillingUpdateLink::class);
         $mockAction->shouldReceive('execute')
             ->once()
             ->with('subscription_test123', $prefillData)
             ->andReturn(new Link('https://checkout.vatly.com/billing-update', 'text/html'));
 
-        app()->instance(CreateBillingUpdateLink::class, $mockAction);
+        app()->instance(CreateSubscriptionBillingUpdateLink::class, $mockAction);
 
         $subscription = new Subscription(['vatly_id' => 'subscription_test123']);
         $url = $subscription->createBillingUpdateLink($prefillData);

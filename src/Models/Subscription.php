@@ -169,8 +169,8 @@ class Subscription extends Model implements SubscriptionInterface
      */
     public function createBillingUpdateLink(array $prefillData = []): string
     {
-        /** @var \Vatly\Fluent\Actions\CreateBillingUpdateLink $action */
-        $action = app()->make(\Vatly\Fluent\Actions\CreateBillingUpdateLink::class);
+        /** @var \Vatly\Fluent\Actions\CreateSubscriptionBillingUpdateLink $action */
+        $action = app()->make(\Vatly\Fluent\Actions\CreateSubscriptionBillingUpdateLink::class);
         $response = $action->execute($this->vatly_id, $prefillData);
 
         return $response->href;
