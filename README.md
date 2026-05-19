@@ -6,9 +6,9 @@
 
 > **Alpha release -- under active development. Expect breaking changes.**
 
-Laravel integration for [Vatly](https://vatly.com) billing, inspired by Laravel Cashier. Provides Eloquent models, a `Billable` trait, checkout/subscription builders, webhook handling, and event listeners.
+Laravel integration for [Vatly](https://vatly.com) billing, inspired by Laravel Cashier. Provides Eloquent models, a `Billable` trait, Eloquent-aware checkout/subscription builders, Eloquent repositories, a webhook controller, and an event-bus bridge that forwards Vatly events onto Laravel's `Event` facade so you can register listeners the usual way.
 
-Built on top of [vatly/vatly-fluent-php](https://github.com/Vatly/vatly-fluent-php).
+Built on top of [vatly/vatly-fluent-php](https://github.com/Vatly/vatly-fluent-php) — the framework-agnostic core that this package adapts to Laravel.
 
 ## Installation
 
@@ -21,7 +21,7 @@ Pin to an exact version. This is an alpha release and the API will change.
 ## Requirements
 
 - PHP 8.2+
-- Laravel 10, 11, or 12
+- Laravel 11 or 12
 - A Vatly API key ([vatly.com](https://vatly.com))
 
 ## Setup
@@ -35,9 +35,11 @@ php artisan vendor:publish --tag=vatly-config
 2. Add your API key to `.env`:
 
 ```
-VATLY_API_KEY=test_xxxxxxxxxxxx
+VATLY_KEY=test_xxxxxxxxxxxx
 VATLY_WEBHOOK_SECRET=your-webhook-secret
 ```
+
+See [docs/configuration.md](docs/configuration.md) for the full list of config options.
 
 3. Publish and run migrations:
 
@@ -79,13 +81,16 @@ $user->subscription('default')->cancel();
 
 ## Webhooks
 
-The package registers a webhook endpoint at `/vatly/webhook` automatically. Configure your webhook secret in the Vatly dashboard.
+The package registers a webhook endpoint at `/webhooks/vatly` automatically. Configure your webhook secret in the Vatly dashboard.
 
-Events dispatched:
-- `Vatly\Events\WebhookReceived`
-- `Vatly\Events\SubscriptionStarted`
-- `Vatly\Events\SubscriptionCanceledImmediately`
-- `Vatly\Events\SubscriptionCanceledWithGracePeriod`
+Events dispatched (from [`vatly/vatly-fluent-php`](https://github.com/Vatly/vatly-fluent-php)):
+- `Vatly\Fluent\Events\WebhookReceived`
+- `Vatly\Fluent\Events\OrderPaid`
+- `Vatly\Fluent\Events\SubscriptionStarted`
+- `Vatly\Fluent\Events\SubscriptionCanceledImmediately`
+- `Vatly\Fluent\Events\SubscriptionCanceledWithGracePeriod`
+- `Vatly\Fluent\Events\LocalSubscriptionCreated`
+- `Vatly\Fluent\Events\UnsupportedWebhookReceived`
 
 ## Testing
 
