@@ -10,7 +10,7 @@ use Vatly\Fluent\Actions\CreateCheckout;
 use Vatly\Fluent\Actions\CreateCustomer;
 use Vatly\Fluent\Actions\GetCheckout;
 use Vatly\Fluent\Actions\GetCustomer;
-use Vatly\Fluent\Actions\GetPaymentMethodUpdateUrl;
+use Vatly\Fluent\Actions\CreateSubscriptionBillingUpdateLink;
 use Vatly\Fluent\Actions\GetSubscription;
 use Vatly\Fluent\Actions\SwapSubscriptionPlan;
 use Vatly\API\VatlyApiClient;
@@ -83,7 +83,7 @@ class VatlyServiceProvider extends ServiceProvider
             CreateCheckout::class,
             GetCheckout::class,
             GetSubscription::class,
-            GetPaymentMethodUpdateUrl::class,
+            CreateSubscriptionBillingUpdateLink::class,
             CancelSubscription::class,
             SwapSubscriptionPlan::class,
         ];

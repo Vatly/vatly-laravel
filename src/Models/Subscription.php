@@ -159,14 +159,18 @@ class Subscription extends Model implements SubscriptionInterface
     }
 
     /**
-     * Get the URL where the customer can update their payment method.
+     * Create a signed URL where the customer can update the billing details for this
+     * subscription (billing address, VAT number, company name).
+     *
+     * Each call creates a fresh time-bounded link (30-minute TTL by default), so generate
+     * one per email/redirect rather than reusing.
      *
      * @param array<string, mixed> $prefillData
      */
-    public function updatePaymentMethodUrl(array $prefillData = []): string
+    public function createBillingUpdateLink(array $prefillData = []): string
     {
-        /** @var \Vatly\Fluent\Actions\GetPaymentMethodUpdateUrl $action */
-        $action = app()->make(\Vatly\Fluent\Actions\GetPaymentMethodUpdateUrl::class);
+        /** @var \Vatly\Fluent\Actions\CreateSubscriptionBillingUpdateLink $action */
+        $action = app()->make(\Vatly\Fluent\Actions\CreateSubscriptionBillingUpdateLink::class);
         $response = $action->execute($this->vatly_id, $prefillData);
 
         return $response->href;
