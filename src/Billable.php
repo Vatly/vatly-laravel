@@ -134,14 +134,6 @@ trait Billable
         return $this->vatlyBillable()->createOrGetVatlyCustomer($options);
     }
 
-    /**
-     * @param array<string, mixed> $options
-     */
-    public function ensureHasVatlyCustomer(array $options = []): void
-    {
-        $this->vatlyBillable()->ensureHasVatlyCustomer($options);
-    }
-
     // --- Static finders (Laravel-specific) ---
 
     public static function findByVatlyCustomerId(string $id): ?static
