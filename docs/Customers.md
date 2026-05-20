@@ -22,7 +22,7 @@ $user->createAsVatlyCustomer([
 $user->hasVatlyId(); // bool
 
 // Get the Vatly customer ID
-$user->vatlyId(); // string|null
+$user->getVatlyId(); // string|null
 ```
 
 ## Retrieving customer data

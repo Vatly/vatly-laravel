@@ -5,27 +5,24 @@ declare(strict_types=1);
 namespace Vatly\Laravel;
 
 use Illuminate\Support\ServiceProvider;
+use Vatly\API\VatlyApiClient;
 use Vatly\Fluent\Actions\CancelSubscription;
 use Vatly\Fluent\Actions\CreateCheckout;
 use Vatly\Fluent\Actions\CreateCustomer;
+use Vatly\Fluent\Actions\CreateSubscriptionBillingUpdateLink;
 use Vatly\Fluent\Actions\GetCheckout;
 use Vatly\Fluent\Actions\GetCustomer;
-use Vatly\Fluent\Actions\CreateSubscriptionBillingUpdateLink;
 use Vatly\Fluent\Actions\GetSubscription;
 use Vatly\Fluent\Actions\SwapSubscriptionPlan;
-use Vatly\API\VatlyApiClient;
+use Vatly\Fluent\BillableFactory;
 use Vatly\Fluent\Contracts\ConfigurationInterface;
 use Vatly\Fluent\Contracts\CustomerRepositoryInterface;
 use Vatly\Fluent\Contracts\EventDispatcherInterface;
 use Vatly\Fluent\Contracts\OrderRepositoryInterface;
 use Vatly\Fluent\Contracts\SubscriptionRepositoryInterface;
 use Vatly\Fluent\Contracts\WebhookCallRepositoryInterface;
-use Vatly\Fluent\Webhooks\Reactions\CancelSubscriptionOnCanceled;
-use Vatly\Fluent\Webhooks\Reactions\StoreOrderOnPaid;
-use Vatly\Fluent\Webhooks\Reactions\SyncSubscriptionOnStarted;
-use Vatly\Fluent\Webhooks\SignatureVerifier;
-use Vatly\Fluent\Webhooks\WebhookEventFactory;
 use Vatly\Fluent\Webhooks\WebhookProcessor;
+use Vatly\Fluent\Webhooks\WebhookProcessorFactory;
 use Vatly\Laravel\Events\LaravelEventDispatcher;
 use Vatly\Laravel\Repositories\EloquentCustomerRepository;
 use Vatly\Laravel\Repositories\EloquentOrderRepository;
@@ -45,6 +42,7 @@ class VatlyServiceProvider extends ServiceProvider
         $this->registerActions();
         $this->registerRepositories();
         $this->registerEventDispatcher();
+        $this->registerBillableFactory();
         $this->registerWebhookProcessor();
     }
 
@@ -108,32 +106,34 @@ class VatlyServiceProvider extends ServiceProvider
         $this->app->bind(EventDispatcherInterface::class, LaravelEventDispatcher::class);
     }
 
+    private function registerBillableFactory(): void
+    {
+        $this->app->singleton(BillableFactory::class, function () {
+            return new BillableFactory(
+                subscriptions: $this->app->make(SubscriptionRepositoryInterface::class),
+                customers: $this->app->make(CustomerRepositoryInterface::class),
+                orders: $this->app->make(OrderRepositoryInterface::class),
+                config: $this->app->make(ConfigurationInterface::class),
+                createCheckoutAction: $this->app->make(CreateCheckout::class),
+                createCustomerAction: $this->app->make(CreateCustomer::class),
+                getCustomerAction: $this->app->make(GetCustomer::class),
+                getSubscriptionAction: $this->app->make(GetSubscription::class),
+                swapSubscriptionPlanAction: $this->app->make(SwapSubscriptionPlan::class),
+                cancelSubscriptionAction: $this->app->make(CancelSubscription::class),
+                createBillingUpdateLinkAction: $this->app->make(CreateSubscriptionBillingUpdateLink::class),
+            );
+        });
+    }
+
     private function registerWebhookProcessor(): void
     {
-        $this->app->singleton(SignatureVerifier::class);
-        $this->app->singleton(WebhookEventFactory::class);
-
         $this->app->singleton(WebhookProcessor::class, function () {
-            $config = $this->app->make(ConfigurationInterface::class);
-
-            return new WebhookProcessor(
-                signatureVerifier: $this->app->make(SignatureVerifier::class),
-                eventFactory: $this->app->make(WebhookEventFactory::class),
-                repository: $this->app->make(WebhookCallRepositoryInterface::class),
+            return WebhookProcessorFactory::create(
+                config: $this->app->make(ConfigurationInterface::class),
+                subscriptions: $this->app->make(SubscriptionRepositoryInterface::class),
+                orders: $this->app->make(OrderRepositoryInterface::class),
+                webhookCalls: $this->app->make(WebhookCallRepositoryInterface::class),
                 dispatcher: $this->app->make(EventDispatcherInterface::class),
-                webhookSecret: $config->getWebhookSecret() ?? '',
-                reactions: [
-                    new SyncSubscriptionOnStarted(
-                        $this->app->make(SubscriptionRepositoryInterface::class),
-                        $this->app->make(EventDispatcherInterface::class),
-                    ),
-                    new CancelSubscriptionOnCanceled(
-                        $this->app->make(SubscriptionRepositoryInterface::class),
-                    ),
-                    new StoreOrderOnPaid(
-                        $this->app->make(OrderRepositoryInterface::class),
-                    ),
-                ],
             );
         });
     }
