@@ -8,13 +8,16 @@ use Carbon\Carbon;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
-use Vatly\Fluent\Actions\CancelSubscription;
-use Vatly\Fluent\Actions\SwapSubscriptionPlan;
 use Vatly\Fluent\Contracts\BillableInterface;
 use Vatly\Fluent\Contracts\SubscriptionInterface;
-use Vatly\Fluent\Exceptions\FeatureUnavailableException;
 
 /**
+ * The local representation of a Vatly subscription.
+ *
+ * State-only — operations (swap, cancel, sync, createBillingUpdateLink)
+ * live on Vatly\Fluent\SubscriptionHandle and are reached via
+ * $user->subscription('default').
+ *
  * @property BillableInterface $owner
  * @property string $type
  * @property string $plan_id
@@ -48,7 +51,7 @@ class Subscription extends Model implements SubscriptionInterface
         return $this->morphTo('owner');
     }
 
-    // SubscriptionInterface implementation
+    // --- SubscriptionInterface implementation ---
 
     public function getVatlyId(): string
     {
@@ -97,10 +100,10 @@ class Subscription extends Model implements SubscriptionInterface
 
     public function isActive(): bool
     {
-        return !$this->isCancelled() || $this->isOnGracePeriod();
+        return ! $this->isCancelled() || $this->isOnGracePeriod();
     }
 
-    // Legacy method aliases for backward compatibility
+    // --- Legacy aliases (kept for ergonomic parity with the handle) ---
 
     public function cancelled(): bool
     {
@@ -115,102 +118,5 @@ class Subscription extends Model implements SubscriptionInterface
     public function active(): bool
     {
         return $this->isActive();
-    }
-
-    // Business logic
-
-    /**
-     * @param array<string, mixed> $options
-     */
-    public function swap(string $type, string $planId, array $options = []): self
-    {
-        /** @var SwapSubscriptionPlan $action */
-        $action = app()->make(SwapSubscriptionPlan::class);
-        $response = $action->execute($this->vatly_id, $planId, $options);
-
-        $this->type = $type;
-        $this->plan_id = $response->subscriptionPlanId;
-        $this->quantity = $response->quantity;
-        $this->save();
-
-        return $this;
-    }
-
-    /**
-     * Swap to a new plan and invoice immediately.
-     *
-     * This applies the plan change immediately and creates an invoice
-     * for any prorated charges right away.
-     *
-     * @param array<string, mixed> $options
-     */
-    public function swapAndInvoice(string $type, string $planId, array $options = []): self
-    {
-        // Force immediate application and invoicing
-        $options['applyImmediately'] = true;
-        $options['invoiceImmediately'] = true;
-
-        return $this->swap($type, $planId, $options);
-    }
-
-    public function resume(): self
-    {
-        throw FeatureUnavailableException::notImplementedOnApi();
-    }
-
-    /**
-     * Create a signed URL where the customer can update the billing details for this
-     * subscription (billing address, VAT number, company name).
-     *
-     * Each call creates a fresh time-bounded link (30-minute TTL by default), so generate
-     * one per email/redirect rather than reusing.
-     *
-     * @param array<string, mixed> $prefillData
-     */
-    public function createBillingUpdateLink(array $prefillData = []): string
-    {
-        /** @var \Vatly\Fluent\Actions\CreateSubscriptionBillingUpdateLink $action */
-        $action = app()->make(\Vatly\Fluent\Actions\CreateSubscriptionBillingUpdateLink::class);
-        $response = $action->execute($this->vatly_id, $prefillData);
-
-        return $response->href;
-    }
-
-    /**
-     * Sync the local subscription with the current state at Vatly.
-     *
-     * Fetches fresh data from the Vatly API and updates the local model.
-     */
-    public function sync(): self
-    {
-        /** @var \Vatly\Fluent\Actions\GetSubscription $action */
-        $action = app()->make(\Vatly\Fluent\Actions\GetSubscription::class);
-        $response = $action->execute($this->vatly_id);
-
-        $this->plan_id = $response->subscriptionPlanId;
-        $this->name = $response->name;
-        $this->quantity = $response->quantity;
-
-        if ($response->endedAt !== null) {
-            $this->ends_at = Carbon::parse($response->endedAt);
-        } elseif ($response->cancelledAt !== null) {
-            $this->ends_at = $this->ends_at ?? Carbon::parse($response->cancelledAt);
-        }
-
-        if ($response->trialUntil !== null) {
-            $this->trial_ends_at = Carbon::parse($response->trialUntil);
-        }
-
-        $this->save();
-
-        return $this;
-    }
-
-    /**
-     * Cancel the subscription at Vatly.
-     */
-    public function cancel(): void
-    {
-        app()->make(CancelSubscription::class)->execute($this->vatly_id);
     }
 }

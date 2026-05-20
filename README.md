@@ -80,25 +80,37 @@ Pin to an exact version during alpha — the API will change.
 ## Usage
 
 ```php
-// Create a checkout
-$checkout = $user->newCheckout()
-    ->withItems(collect(['subscription_plan_id']))
-    ->create(
-        redirectUrlSuccess: 'https://example.com/success',
-        redirectUrlCanceled: 'https://example.com/canceled',
-    );
+// Start a subscription checkout
+$checkout = $user->subscribe()
+    ->toPlan('plan_premium')
+    ->create();
 
-// Check subscription state
-$user->subscribed('default');                // bool
-$user->subscription('default')->onGracePeriod();
-$user->subscription('default')->cancelled();
+return redirect($checkout->links->checkoutUrl->href);
+
+// Or one-off checkouts with explicit items
+$checkout = $user->checkout()->create(
+    items: [['id' => 'plan_premium', 'quantity' => 1]],
+    redirectUrlSuccess: 'https://example.com/success',
+    redirectUrlCanceled: 'https://example.com/canceled',
+);
+
+// Subscription state
+$user->subscribed();                          // bool, default type
+$user->subscribed('team');                    // bool, custom type
+$user->subscription()->active();
+$user->subscription()->onGracePeriod();
+$user->subscription()->cancelled();
 
 // Swap plan
-$user->subscription('default')->swap('plan_premium');
+$user->subscription()->swap('default', 'plan_premium');
 
-// Cancel
-$user->subscription('default')->cancel();    // at period end
+// Cancel at period end (Vatly decides immediate vs grace period)
+$user->subscription()->cancel();
 ```
+
+`$user->subscription()` returns a `Vatly\Fluent\SubscriptionHandle` — a thin wrapper around the local `Subscription` Eloquent model with the API-driven operations on it. Reach the underlying model via `$user->subscription()->model()` or query directly with `$user->subscriptions()->where(...)`.
+
+For more explicit/namespaced access, `$user->vatlyBillable()` returns the framework-agnostic orchestrator: `$user->vatlyBillable()->subscribed('default')`, `$user->vatlyBillable()->createAsVatlyCustomer()`, etc.
 
 See [docs/Subscriptions.md](docs/Subscriptions.md) and [docs/Checkouts.md](docs/Checkouts.md) for the full surface.
 
