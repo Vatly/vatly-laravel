@@ -102,21 +102,4 @@ class Subscription extends Model implements SubscriptionInterface
     {
         return ! $this->isCancelled() || $this->isOnGracePeriod();
     }
-
-    // --- Legacy aliases (kept for ergonomic parity with the handle) ---
-
-    public function cancelled(): bool
-    {
-        return $this->isCancelled();
-    }
-
-    public function onGracePeriod(): bool
-    {
-        return $this->isOnGracePeriod();
-    }
-
-    public function active(): bool
-    {
-        return $this->isActive();
-    }
 }

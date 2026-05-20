@@ -57,11 +57,8 @@ class SubscriptionTest extends BaseTestCase
         ]);
 
         $this->assertTrue($subscription->isActive());
-        $this->assertTrue($subscription->active()); // Legacy alias
         $this->assertFalse($subscription->isCancelled());
-        $this->assertFalse($subscription->cancelled()); // Legacy alias
         $this->assertFalse($subscription->isOnGracePeriod());
-        $this->assertFalse($subscription->onGracePeriod()); // Legacy alias
     }
 
     /** @test */
