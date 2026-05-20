@@ -148,7 +148,7 @@ composer test
 
 ## Under the hood
 
-This package is the Laravel driver for [`vatly/vatly-fluent-php`](https://github.com/Vatly/vatly-fluent-php), which holds the framework-agnostic webhook pipeline and contracts shared across drivers. You don't need to interact with fluent directly — it's an implementation detail. If you're building an integration for a different framework, see fluent's [Driver Author Guide](https://github.com/Vatly/vatly-fluent-php/blob/main/CONTRIBUTING.md).
+This package builds on [`vatly/vatly-fluent-php`](https://github.com/Vatly/vatly-fluent-php), which holds the webhook pipeline, contracts, events, DTOs, and the `Vatly\Fluent\Billable` orchestrator. You don't need to interact with fluent directly — it's an implementation detail of vatly-laravel.
 
 ## License
 
