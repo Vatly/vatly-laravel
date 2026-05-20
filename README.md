@@ -102,7 +102,7 @@ $user->subscription()->onGracePeriod();
 $user->subscription()->cancelled();
 
 // Swap plan
-$user->subscription()->swap('default', 'plan_premium');
+$user->subscription()->swap('plan_premium');
 
 // Cancel at period end (Vatly decides immediate vs grace period)
 $user->subscription()->cancel();

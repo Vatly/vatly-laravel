@@ -95,7 +95,6 @@ class BillableTraitTest extends BaseTestCase
         $user = User::factory()->create();
 
         $this->assertInstanceOf(SubscriptionBuilder::class, $user->subscribe());
-        $this->assertInstanceOf(SubscriptionBuilder::class, $user->newSubscription());
     }
 
     public function test_checkout_returns_a_checkout_builder(): void
@@ -103,7 +102,6 @@ class BillableTraitTest extends BaseTestCase
         $user = User::factory()->create();
 
         $this->assertInstanceOf(CheckoutBuilder::class, $user->checkout());
-        $this->assertInstanceOf(CheckoutBuilder::class, $user->newCheckout());
     }
 
     public function test_billable_interface_methods_read_eloquent_columns(): void

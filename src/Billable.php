@@ -96,11 +96,6 @@ trait Billable
         return $this->vatlyBillable()->subscribe();
     }
 
-    public function newSubscription(): SubscriptionBuilder
-    {
-        return $this->vatlyBillable()->newSubscription();
-    }
-
     public function subscribed(string $type = Subscription::DEFAULT_TYPE): bool
     {
         return $this->vatlyBillable()->subscribed($type);
@@ -114,11 +109,6 @@ trait Billable
     public function checkout(): CheckoutBuilder
     {
         return $this->vatlyBillable()->checkout();
-    }
-
-    public function newCheckout(): CheckoutBuilder
-    {
-        return $this->vatlyBillable()->newCheckout();
     }
 
     // --- Customer shortcuts ---

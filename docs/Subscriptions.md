@@ -31,10 +31,10 @@ $subscription->onGracePeriod(); // cancelled but still active until ends_at
 
 ```php
 // Swap to a new plan
-$user->subscription()->swap('default', 'subscription_plan_annual');
+$user->subscription()->swap('subscription_plan_annual');
 
 // Swap and invoice immediately (prorated)
-$user->subscription()->swapAndInvoice('default', 'subscription_plan_annual');
+$user->subscription()->swapAndInvoice('subscription_plan_annual');
 ```
 
 ## Canceling
