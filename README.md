@@ -24,8 +24,8 @@ Full docs at [docs.vatly.com](https://docs.vatly.com). In this repo:
 
 ## Requirements
 
-- PHP 8.2+
-- Laravel 11 or 12
+- PHP 8.3+
+- Laravel 12 or 13
 - A Vatly API key ([vatly.com](https://vatly.com))
 
 ## Installation

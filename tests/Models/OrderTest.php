@@ -14,16 +14,14 @@ class OrderTest extends BaseTestCase
 {
     use RefreshDatabase;
 
-    /** @test */
-    public function it_implements_order_interface(): void
+    public function test_it_implements_order_interface(): void
     {
         $order = new Order();
 
         $this->assertInstanceOf(OrderInterface::class, $order);
     }
 
-    /** @test */
-    public function it_can_be_created_with_attributes(): void
+    public function test_it_can_be_created_with_attributes(): void
     {
         $user = User::create([
             'name' => 'Test User',
@@ -51,8 +49,7 @@ class OrderTest extends BaseTestCase
         $this->assertTrue($order->isPaid());
     }
 
-    /** @test */
-    public function it_has_a_morph_to_owner_relationship(): void
+    public function test_it_has_a_morph_to_owner_relationship(): void
     {
         $user = User::create([
             'name' => 'Test User',
@@ -73,8 +70,7 @@ class OrderTest extends BaseTestCase
         $this->assertSame($user->id, $order->owner->id);
     }
 
-    /** @test */
-    public function user_can_access_orders_via_relationship(): void
+    public function test_user_can_access_orders_via_relationship(): void
     {
         $user = User::create([
             'name' => 'Test User',
@@ -103,8 +99,7 @@ class OrderTest extends BaseTestCase
         $this->assertCount(2, $user->orders);
     }
 
-    /** @test */
-    public function is_paid_returns_false_for_non_paid_orders(): void
+    public function test_is_paid_returns_false_for_non_paid_orders(): void
     {
         $order = new Order(['status' => 'pending']);
 

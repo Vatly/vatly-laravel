@@ -23,8 +23,7 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         $this->app->forgetInstance(WebhookProcessor::class);
     }
 
-    /** @test */
-    public function it_returns_201_for_a_valid_signed_webhook(): void
+    public function test_it_returns_201_for_a_valid_signed_webhook(): void
     {
         User::factory()->create(['vatly_id' => 'customer_foo']);
 
@@ -43,8 +42,7 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         $this->assertDatabaseCount('vatly_webhook_calls', 1);
     }
 
-    /** @test */
-    public function it_handles_unknown_webhook_events(): void
+    public function test_it_handles_unknown_webhook_events(): void
     {
         $payload = $this->makePayload('unknown.event.type', 'res_123', 'unknown', ['foo' => 'bar']);
 
@@ -54,8 +52,7 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         $this->assertDatabaseCount('vatly_webhook_calls', 1);
     }
 
-    /** @test */
-    public function it_returns_403_for_an_invalid_signature(): void
+    public function test_it_returns_403_for_an_invalid_signature(): void
     {
         $payload = $this->makePayload('subscription.started', 'sub_123', 'subscription');
 
@@ -70,8 +67,7 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         $this->assertDatabaseCount('vatly_webhook_calls', 0);
     }
 
-    /** @test */
-    public function it_returns_403_for_a_missing_signature(): void
+    public function test_it_returns_403_for_a_missing_signature(): void
     {
         $payload = $this->makePayload('subscription.started', 'sub_123', 'subscription');
 
@@ -85,8 +81,7 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         $response->assertStatus(403);
     }
 
-    /** @test */
-    public function it_creates_a_subscription_from_webhook(): void
+    public function test_it_creates_a_subscription_from_webhook(): void
     {
         $user = User::factory()->create(['vatly_id' => 'customer_abc']);
 
@@ -110,8 +105,7 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         ]);
     }
 
-    /** @test */
-    public function it_creates_an_order_from_webhook(): void
+    public function test_it_creates_an_order_from_webhook(): void
     {
         $user = User::factory()->create(['vatly_id' => 'customer_abc']);
 
@@ -137,8 +131,7 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         ]);
     }
 
-    /** @test */
-    public function it_cancels_a_subscription_immediately_from_webhook(): void
+    public function test_it_cancels_a_subscription_immediately_from_webhook(): void
     {
         $user = User::factory()->create(['vatly_id' => 'customer_abc']);
 
