@@ -9,9 +9,10 @@ use Vatly\API\VatlyApiClient;
 use Vatly\Fluent\Actions\CancelSubscription;
 use Vatly\Fluent\Actions\CreateCheckout;
 use Vatly\Fluent\Actions\CreateCustomer;
-use Vatly\Fluent\Actions\CreateSubscriptionBillingUpdateLink;
+use Vatly\Fluent\Actions\UpdateSubscriptionBilling;
 use Vatly\Fluent\Actions\GetCheckout;
 use Vatly\Fluent\Actions\GetCustomer;
+use Vatly\Fluent\Actions\GetOrder;
 use Vatly\Fluent\Actions\GetSubscription;
 use Vatly\Fluent\Actions\SwapSubscriptionPlan;
 use Vatly\Fluent\BillableFactory;
@@ -78,10 +79,11 @@ class VatlyServiceProvider extends ServiceProvider
         $actions = [
             CreateCustomer::class,
             GetCustomer::class,
+            GetOrder::class,
             CreateCheckout::class,
             GetCheckout::class,
             GetSubscription::class,
-            CreateSubscriptionBillingUpdateLink::class,
+            UpdateSubscriptionBilling::class,
             CancelSubscription::class,
             SwapSubscriptionPlan::class,
         ];
@@ -120,7 +122,7 @@ class VatlyServiceProvider extends ServiceProvider
                 getSubscriptionAction: $this->app->make(GetSubscription::class),
                 swapSubscriptionPlanAction: $this->app->make(SwapSubscriptionPlan::class),
                 cancelSubscriptionAction: $this->app->make(CancelSubscription::class),
-                createBillingUpdateLinkAction: $this->app->make(CreateSubscriptionBillingUpdateLink::class),
+                updateBillingAction: $this->app->make(UpdateSubscriptionBilling::class),
             );
         });
     }
@@ -134,6 +136,7 @@ class VatlyServiceProvider extends ServiceProvider
                 orders: $this->app->make(OrderRepositoryInterface::class),
                 webhookCalls: $this->app->make(WebhookCallRepositoryInterface::class),
                 dispatcher: $this->app->make(EventDispatcherInterface::class),
+                getOrder: $this->app->make(GetOrder::class),
             );
         });
     }

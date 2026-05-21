@@ -12,8 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('vatly_id')->nullable()->index();
-            $table->timestamp('trial_ends_at')->nullable();
+            if (! Schema::hasColumn('users', 'vatly_id')) {
+                $table->string('vatly_id')->nullable()->index();
+            }
+
+            if (! Schema::hasColumn('users', 'trial_ends_at')) {
+                $table->timestamp('trial_ends_at')->nullable();
+            }
         });
     }
 
@@ -22,9 +27,17 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropColumns('users', [
-            'vatly_id',
-            'trial_ends_at',
-        ]);
+        Schema::table('users', function (Blueprint $table) {
+            if (Schema::hasColumn('users', 'vatly_id')) {
+                if (Schema::hasIndex('users', 'users_vatly_id_index')) {
+                    $table->dropIndex('users_vatly_id_index');
+                }
+                $table->dropColumn('vatly_id');
+            }
+
+            if (Schema::hasColumn('users', 'trial_ends_at')) {
+                $table->dropColumn('trial_ends_at');
+            }
+        });
     }
 };

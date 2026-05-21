@@ -27,6 +27,8 @@ return new class extends Migration
             $table->string('vatly_id')->unique();
             $table->string('status');
             $table->integer('total');
+            $table->integer('subtotal')->nullable();
+            $table->json('tax_summary')->nullable();
             $table->string('currency');
             $table->string('invoice_number')->nullable();
             $table->string('payment_method')->nullable();
