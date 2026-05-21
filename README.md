@@ -131,12 +131,14 @@ Event::listen(OrderPaid::class, function (OrderPaid $event) {
 Events available:
 
 - `Vatly\Fluent\Events\WebhookReceived`
-- `Vatly\Fluent\Events\OrderPaid`
+- `Vatly\Fluent\Events\OrderPaid` — carries `total`, `subtotal`, `taxSummary` (full per-rate breakdown), `currency`, `invoiceNumber`, `paymentMethod`. Materialize local invoices without an extra API call.
 - `Vatly\Fluent\Events\SubscriptionStarted`
 - `Vatly\Fluent\Events\SubscriptionCanceledImmediately`
 - `Vatly\Fluent\Events\SubscriptionCanceledWithGracePeriod`
 - `Vatly\Fluent\Events\LocalSubscriptionCreated`
 - `Vatly\Fluent\Events\UnsupportedWebhookReceived`
+
+The webhook route is named `vatly.webhook` — reach it with `route('vatly.webhook')`.
 
 See [docs/Webhooks.md](docs/Webhooks.md) for signature verification, retries, and customising reactions.
 
@@ -144,6 +146,19 @@ See [docs/Webhooks.md](docs/Webhooks.md) for signature verification, retries, an
 
 ```bash
 composer test
+```
+
+When testing code that calls the `Billable` trait shortcuts, your test models must implement `BillableInterface` (applying the trait does this for you). The contract is enforced at runtime — there's no "loose" mode.
+
+For the `order.paid` webhook flow, the package fetches the full Order from the Vatly API to populate the tax breakdown. In integration tests, swap the `GetOrder` action with a Mockery mock:
+
+```php
+use Mockery;
+use Vatly\Fluent\Actions\GetOrder;
+
+$action = Mockery::mock(GetOrder::class);
+$action->shouldReceive('execute')->andReturn($yourFakeApiOrder);
+$this->app->instance(GetOrder::class, $action);
 ```
 
 ## Under the hood

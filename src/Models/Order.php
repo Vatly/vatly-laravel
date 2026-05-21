@@ -15,6 +15,8 @@ use Vatly\Fluent\Contracts\OrderInterface;
  * @property int $owner_id
  * @property string $status
  * @property int $total
+ * @property int|null $subtotal
+ * @property array<int, array{rate: array{name: string, percentage: float, taxablePercentage: float}, amount: int, currency: string}>|null $tax_summary
  * @property string $currency
  * @property string|null $invoice_number
  * @property string|null $payment_method
@@ -27,6 +29,13 @@ class Order extends Model implements OrderInterface
     protected $table = 'vatly_orders';
 
     protected $guarded = [];
+
+    /**
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'tax_summary' => 'array',
+    ];
 
     /**
      * @return MorphTo<Model, Order>

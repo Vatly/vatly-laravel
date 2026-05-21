@@ -6,6 +6,12 @@ namespace Vatly\Laravel\Tests\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery;
+use Vatly\API\Resources\Order as ApiOrder;
+use Vatly\API\Types\Money;
+use Vatly\API\Types\TaxSummaryCollection;
+use Vatly\API\VatlyApiClient;
+use Vatly\Fluent\Actions\GetOrder;
 use Vatly\Fluent\Webhooks\WebhookProcessor;
 use Vatly\Laravel\Tests\BaseTestCase;
 
@@ -109,7 +115,20 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
     {
         $user = User::factory()->create(['vatly_id' => 'customer_abc']);
 
-        $payload = $this->makePayload('order.paid', 'ord_123', 'order', [
+        $this->fakeGetOrder($this->buildApiOrder([
+            'id' => 'order_abc123',
+            'customerId' => 'customer_abc',
+            'totalValue' => '99.00',
+            'subtotalValue' => '81.82',
+            'currency' => 'EUR',
+            'invoiceNumber' => 'INV-001',
+            'paymentMethod' => 'card',
+            'taxRates' => [
+                ['name' => 'VAT', 'percentage' => 21.0, 'taxablePercentage' => 100.0, 'amount' => '17.18'],
+            ],
+        ]));
+
+        $payload = $this->makePayload('order.paid', 'order_abc123', 'order', [
             'data' => [
                 'customerId' => 'customer_abc',
                 'total' => 9900,
@@ -123,12 +142,94 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
 
         $response->assertStatus(201);
         $this->assertDatabaseHas('vatly_orders', [
-            'vatly_id' => 'ord_123',
+            'vatly_id' => 'order_abc123',
             'status' => 'paid',
             'total' => 9900,
             'currency' => 'EUR',
             'owner_id' => $user->id,
         ]);
+    }
+
+    public function test_it_persists_tax_breakdown_when_creating_an_order_from_webhook(): void
+    {
+        $user = User::factory()->create(['vatly_id' => 'customer_abc']);
+
+        $this->fakeGetOrder($this->buildApiOrder([
+            'id' => 'order_tax_1',
+            'customerId' => 'customer_abc',
+            'totalValue' => '49.99',
+            'subtotalValue' => '41.31',
+            'currency' => 'USD',
+            'invoiceNumber' => null,
+            'paymentMethod' => null,
+            'taxRates' => [
+                ['name' => 'Sales Tax', 'percentage' => 21.0, 'taxablePercentage' => 100.0, 'amount' => '8.68'],
+            ],
+        ]));
+
+        $payload = $this->makePayload('order.paid', 'order_tax_1', 'order', [
+            'data' => [
+                'customerId' => 'customer_abc',
+                'total' => 4999,
+                'currency' => 'USD',
+            ],
+        ]);
+
+        $response = $this->postWebhook($payload);
+
+        $response->assertStatus(201);
+
+        $order = \Vatly\Laravel\Models\Order::where('vatly_id', 'order_tax_1')->firstOrFail();
+        $this->assertSame(4131, $order->subtotal);
+        $this->assertSame('Sales Tax', $order->tax_summary[0]['rate']['name']);
+        $this->assertSame(868, $order->tax_summary[0]['amount']);
+        $this->assertSame('USD', $order->tax_summary[0]['currency']);
+        $this->assertSame($user->id, $order->owner_id);
+    }
+
+    private function fakeGetOrder(ApiOrder $order): void
+    {
+        $action = Mockery::mock(GetOrder::class);
+        $action->shouldReceive('execute')->andReturn($order);
+        $this->app->instance(GetOrder::class, $action);
+        $this->app->forgetInstance(WebhookProcessor::class);
+    }
+
+    /**
+     * @param array{
+     *   id: string,
+     *   customerId: string,
+     *   totalValue: string,
+     *   subtotalValue: string,
+     *   currency: string,
+     *   invoiceNumber: ?string,
+     *   paymentMethod: ?string,
+     *   taxRates: array<int, array{name: string, percentage: float, taxablePercentage: float, amount: string}>,
+     * } $data
+     */
+    private function buildApiOrder(array $data): ApiOrder
+    {
+        $order = new ApiOrder(Mockery::mock(VatlyApiClient::class));
+        $order->id = $data['id'];
+        $order->customerId = $data['customerId'];
+        $order->total = new Money($data['currency'], $data['totalValue']);
+        $order->subtotal = new Money($data['currency'], $data['subtotalValue']);
+        $order->invoiceNumber = $data['invoiceNumber'];
+        $order->paymentMethod = $data['paymentMethod'];
+        $order->status = 'paid';
+        $order->taxSummary = new TaxSummaryCollection(array_map(
+            fn (array $rate) => [
+                'taxRate' => [
+                    'name' => $rate['name'],
+                    'percentage' => $rate['percentage'],
+                    'taxablePercentage' => $rate['taxablePercentage'],
+                ],
+                'amount' => ['currency' => $data['currency'], 'value' => $rate['amount']],
+            ],
+            $data['taxRates'],
+        ));
+
+        return $order;
     }
 
     public function test_it_cancels_a_subscription_immediately_from_webhook(): void

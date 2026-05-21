@@ -48,6 +48,8 @@ class EloquentOrderRepository implements OrderRepositoryInterface
             'owner_id' => $owner->getKey(),
             'status' => $data->status,
             'total' => $data->total,
+            'subtotal' => $data->subtotal,
+            'tax_summary' => $data->taxSummary?->toArray(),
             'currency' => $data->currency,
             'invoice_number' => $data->invoiceNumber,
             'payment_method' => $data->paymentMethod,
@@ -62,6 +64,12 @@ class EloquentOrderRepository implements OrderRepositoryInterface
             }
             if ($data->total !== null) {
                 $order->total = $data->total;
+            }
+            if ($data->subtotal !== null) {
+                $order->subtotal = $data->subtotal;
+            }
+            if ($data->taxSummary !== null) {
+                $order->tax_summary = $data->taxSummary->toArray();
             }
             if ($data->currency !== null) {
                 $order->currency = $data->currency;
