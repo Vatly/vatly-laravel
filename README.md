@@ -112,7 +112,23 @@ $user->subscription()->cancel();
 
 For more explicit/namespaced access, `$user->vatlyBillable()` returns the framework-agnostic orchestrator: `$user->vatlyBillable()->subscribed('default')`, `$user->vatlyBillable()->createAsVatlyCustomer()`, etc.
 
+If your app conditionally enables Vatly (e.g. you toggle providers by commenting the trait in/out at deploy time), use the `vatly()` helper at call sites so they stay valid whether or not the trait is currently applied:
+
+```php
+vatly(Auth::user())?->subscribe()->toPlan('plan_premium')->create();
+```
+
+`vatly()` returns `null` when the owner doesn't implement `BillableInterface`, so static analysis and runtime both stay happy.
+
 See [docs/Subscriptions.md](docs/Subscriptions.md) and [docs/Checkouts.md](docs/Checkouts.md) for the full surface.
+
+## Coexisting with Laravel Cashier
+
+The `Vatly\Laravel\Billable` trait shares method names with `Laravel\Cashier\Billable`: `subscriptions()`, `subscription()`, `subscribed()`, `subscribe()`, `checkout()`, and `orders()`. You cannot `use` both traits on the same model — pick one. This is the "uncomment one provider" pattern used by Larafast and similar boilerplates.
+
+A consequence: A/B testing the two providers on the same `User` instance in one request isn't possible — traits are resolved at class-load time. To compare providers in production, route cohorts to different `User` subclasses, or branch in your controllers without relying on the trait methods.
+
+We deliberately don't prefix Vatly's methods with `vatly*` (i.e. `vatlySubscribe()`) because Vatly-only apps would pay the ergonomics tax to solve a problem that only affects multi-provider setups.
 
 ## Webhooks
 
@@ -131,12 +147,14 @@ Event::listen(OrderPaid::class, function (OrderPaid $event) {
 Events available:
 
 - `Vatly\Fluent\Events\WebhookReceived`
-- `Vatly\Fluent\Events\OrderPaid`
+- `Vatly\Fluent\Events\OrderPaid` — carries `total`, `subtotal`, `taxSummary` (full per-rate breakdown), `currency`, `invoiceNumber`, `paymentMethod`. Materialize local invoices without an extra API call.
 - `Vatly\Fluent\Events\SubscriptionStarted`
 - `Vatly\Fluent\Events\SubscriptionCanceledImmediately`
 - `Vatly\Fluent\Events\SubscriptionCanceledWithGracePeriod`
 - `Vatly\Fluent\Events\LocalSubscriptionCreated`
 - `Vatly\Fluent\Events\UnsupportedWebhookReceived`
+
+The webhook route is named `vatly.webhook` — reach it with `route('vatly.webhook')`.
 
 See [docs/Webhooks.md](docs/Webhooks.md) for signature verification, retries, and customising reactions.
 
@@ -144,6 +162,19 @@ See [docs/Webhooks.md](docs/Webhooks.md) for signature verification, retries, an
 
 ```bash
 composer test
+```
+
+When testing code that calls `vatly()` or the `Billable` trait shortcuts, your test models must implement `BillableInterface` (apply the `Vatly\Laravel\Billable` trait, or implement the interface manually on a test fixture). The contract is enforced at runtime — there's no "loose" mode.
+
+For the `order.paid` webhook flow, the package fetches the full Order from the Vatly API to populate the tax breakdown. In integration tests, swap the `GetOrder` action with a Mockery mock:
+
+```php
+use Mockery;
+use Vatly\Fluent\Actions\GetOrder;
+
+$action = Mockery::mock(GetOrder::class);
+$action->shouldReceive('execute')->andReturn($yourFakeApiOrder);
+$this->app->instance(GetOrder::class, $action);
 ```
 
 ## Under the hood
