@@ -14,7 +14,7 @@ use Vatly\Fluent\Contracts\SubscriptionInterface;
 /**
  * The local representation of a Vatly subscription.
  *
- * State-only — operations (swap, cancel, sync, createBillingUpdateLink)
+ * State-only — operations (swap, cancel, sync, updateBilling)
  * live on Vatly\Fluent\SubscriptionHandle and are reached via
  * $user->subscription('default').
  *
