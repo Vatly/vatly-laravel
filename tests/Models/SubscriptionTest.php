@@ -13,8 +13,7 @@ class SubscriptionTest extends BaseTestCase
 {
     use RefreshDatabase;
 
-    /** @test */
-    public function it_implements_subscription_interface_getters()
+    public function test_it_implements_subscription_interface_getters()
     {
         $user = User::factory()->create([
             'vatly_id' => 'customer_456',
@@ -38,8 +37,7 @@ class SubscriptionTest extends BaseTestCase
         $this->assertNull($subscription->getEndsAt());
     }
 
-    /** @test */
-    public function it_identifies_active_subscriptions()
+    public function test_it_identifies_active_subscriptions()
     {
         $user = User::factory()->create([
             'vatly_id' => 'customer_789',
@@ -61,8 +59,7 @@ class SubscriptionTest extends BaseTestCase
         $this->assertFalse($subscription->isOnGracePeriod());
     }
 
-    /** @test */
-    public function it_identifies_canceled_subscriptions()
+    public function test_it_identifies_canceled_subscriptions()
     {
         $user = User::factory()->create([
             'vatly_id' => 'customer_canceled',
@@ -84,8 +81,7 @@ class SubscriptionTest extends BaseTestCase
         $this->assertFalse($subscription->isOnGracePeriod());
     }
 
-    /** @test */
-    public function it_identifies_subscriptions_on_grace_period()
+    public function test_it_identifies_subscriptions_on_grace_period()
     {
         $user = User::factory()->create([
             'vatly_id' => 'customer_grace',
