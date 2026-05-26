@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $event_name
  * @property string $entity_type
  * @property string $entity_id
+ * @property bool $testmode
+ * @property \Carbon\Carbon $vatly_created_at
  * @property ?string $vatly_customer_id
  * @property array<string, mixed> $object
  */
@@ -29,11 +31,15 @@ class VatlyWebhookCall extends Model
         'event_name',
         'entity_type',
         'entity_id',
+        'testmode',
+        'vatly_created_at',
         'vatly_customer_id',
         'object',
     ];
 
     protected $casts = [
+        'testmode' => 'boolean',
+        'vatly_created_at' => 'datetime',
         'object' => 'array',
     ];
 

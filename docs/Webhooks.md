@@ -69,5 +69,7 @@ Every webhook is recorded in the `vatly_webhook_calls` table with:
 - `event_name` -- The webhook event type (e.g., `subscription.started`)
 - `entity_type` -- The resource type the event relates to (e.g., `subscription`)
 - `entity_id` -- The Vatly resource ID the event relates to
+- `testmode` -- Whether the event was raised against a testmode entity
+- `vatly_created_at` -- When the webhook event was created at Vatly
 - `vatly_customer_id` -- The associated customer ID, when present
 - `object` -- The full resource payload at the time of the event (JSON)

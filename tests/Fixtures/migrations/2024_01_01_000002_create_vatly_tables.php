@@ -44,6 +44,8 @@ return new class extends Migration
             $table->string('event_name');
             $table->string('entity_type');
             $table->string('entity_id')->index();
+            $table->boolean('testmode');
+            $table->timestamp('vatly_created_at');
             $table->string('vatly_customer_id')->nullable()->index();
             $table->json('object');
         });

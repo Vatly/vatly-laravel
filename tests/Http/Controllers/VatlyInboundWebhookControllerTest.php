@@ -256,7 +256,6 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
 
         $payload = $this->makePayload('subscription.canceled_immediately', 'sub_cancel', 'subscription', [
             'customerId' => 'customer_abc',
-            'endedAt' => now()->toIso8601String(),
         ]);
 
         $response = $this->postWebhook($payload);
@@ -277,6 +276,8 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
             'eventName' => $eventName,
             'entityType' => $entityType,
             'entityId' => $entityId,
+            'testmode' => true,
+            'createdAt' => now()->toIso8601String(),
             'object' => (object) $object,
         ]);
     }

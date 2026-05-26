@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Vatly\Laravel\Repositories;
 
+use DateTimeInterface;
 use Vatly\Fluent\Contracts\WebhookCallRepositoryInterface;
 use Vatly\Laravel\Models\VatlyWebhookCall;
 
@@ -18,6 +19,8 @@ class EloquentWebhookCallRepository implements WebhookCallRepositoryInterface
         string $eventName,
         string $entityType,
         string $entityId,
+        bool $testmode,
+        DateTimeInterface $createdAt,
         array $object,
         ?string $vatlyCustomerId = null,
     ): void {
@@ -27,6 +30,8 @@ class EloquentWebhookCallRepository implements WebhookCallRepositoryInterface
             'event_name' => $eventName,
             'entity_type' => $entityType,
             'entity_id' => $entityId,
+            'testmode' => $testmode,
+            'vatly_created_at' => $createdAt,
             'object' => $object,
             'vatly_customer_id' => $vatlyCustomerId,
         ]);
