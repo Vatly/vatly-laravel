@@ -65,7 +65,7 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         $response = $this->call(
             'POST',
             'webhooks/vatly',
-            server: ['HTTP_X_VATLY_SIGNATURE' => 'invalid-signature', 'CONTENT_TYPE' => 'application/json'],
+            server: ['HTTP_VATLY_SIGNATURE' => 't='.time().',v1=deadbeef', 'CONTENT_TYPE' => 'application/json'],
             content: $payload,
         );
 
@@ -85,6 +85,23 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         );
 
         $response->assertStatus(403);
+    }
+
+    public function test_it_returns_403_for_a_stale_timestamp(): void
+    {
+        $payload = $this->makePayload('subscription.started', 'sub_123', 'subscription');
+        $staleTimestamp = time() - 3600;
+        $signature = hash_hmac('sha256', $staleTimestamp.'.'.$payload, $this->secret);
+
+        $response = $this->call(
+            'POST',
+            'webhooks/vatly',
+            server: ['HTTP_VATLY_SIGNATURE' => "t={$staleTimestamp},v1={$signature}", 'CONTENT_TYPE' => 'application/json'],
+            content: $payload,
+        );
+
+        $response->assertStatus(403);
+        $this->assertDatabaseCount('vatly_webhook_calls', 0);
     }
 
     public function test_it_creates_a_subscription_from_webhook(): void
@@ -274,12 +291,13 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
 
     private function postWebhook(string $payload): \Illuminate\Testing\TestResponse
     {
-        $signature = hash_hmac('sha256', $payload, $this->secret);
+        $timestamp = time();
+        $signature = hash_hmac('sha256', $timestamp.'.'.$payload, $this->secret);
 
         return $this->call(
             'POST',
             'webhooks/vatly',
-            server: ['HTTP_X_VATLY_SIGNATURE' => $signature, 'CONTENT_TYPE' => 'application/json'],
+            server: ['HTTP_VATLY_SIGNATURE' => "t={$timestamp},v1={$signature}", 'CONTENT_TYPE' => 'application/json'],
             content: $payload,
         );
     }

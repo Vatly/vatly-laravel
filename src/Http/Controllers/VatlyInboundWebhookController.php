@@ -7,6 +7,7 @@ namespace Vatly\Laravel\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
+use Vatly\API\Webhooks\WebhookSignatureValidator;
 use Vatly\Fluent\Exceptions\InvalidWebhookSignatureException;
 use Vatly\Fluent\Webhooks\WebhookProcessor;
 
@@ -27,7 +28,7 @@ class VatlyInboundWebhookController
         try {
             $this->processor->handle(
                 payload: (string) $request->getContent(),
-                signature: $request->header('X-Vatly-Signature', ''),
+                signature: (string) $request->header(WebhookSignatureValidator::SIGNATURE_HEADER_NAME, ''),
             );
         } catch (InvalidWebhookSignatureException) {
             return response('', 403);
