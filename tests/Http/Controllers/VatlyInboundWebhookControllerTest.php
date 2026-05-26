@@ -34,12 +34,10 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         User::factory()->create(['vatly_id' => 'customer_foo']);
 
         $payload = $this->makePayload('subscription.started', 'sub_123', 'subscription', [
-            'data' => [
-                'customerId' => 'customer_foo',
-                'subscriptionPlanId' => 'plan_foo',
-                'quantity' => 1,
-                'name' => 'Test Plan',
-            ],
+            'customerId' => 'customer_foo',
+            'subscriptionPlanId' => 'plan_foo',
+            'quantity' => 1,
+            'name' => 'Test Plan',
         ]);
 
         $response = $this->postWebhook($payload);
@@ -65,7 +63,7 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         $response = $this->call(
             'POST',
             'webhooks/vatly',
-            server: ['HTTP_X_VATLY_SIGNATURE' => 'invalid-signature', 'CONTENT_TYPE' => 'application/json'],
+            server: ['HTTP_VATLY_SIGNATURE' => 't='.time().',v1=deadbeef', 'CONTENT_TYPE' => 'application/json'],
             content: $payload,
         );
 
@@ -87,17 +85,32 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         $response->assertStatus(403);
     }
 
+    public function test_it_returns_403_for_a_stale_timestamp(): void
+    {
+        $payload = $this->makePayload('subscription.started', 'sub_123', 'subscription');
+        $staleTimestamp = time() - 3600;
+        $signature = hash_hmac('sha256', $staleTimestamp.'.'.$payload, $this->secret);
+
+        $response = $this->call(
+            'POST',
+            'webhooks/vatly',
+            server: ['HTTP_VATLY_SIGNATURE' => "t={$staleTimestamp},v1={$signature}", 'CONTENT_TYPE' => 'application/json'],
+            content: $payload,
+        );
+
+        $response->assertStatus(403);
+        $this->assertDatabaseCount('vatly_webhook_calls', 0);
+    }
+
     public function test_it_creates_a_subscription_from_webhook(): void
     {
         $user = User::factory()->create(['vatly_id' => 'customer_abc']);
 
         $payload = $this->makePayload('subscription.started', 'sub_999', 'subscription', [
-            'data' => [
-                'customerId' => 'customer_abc',
-                'subscriptionPlanId' => 'plan_premium',
-                'quantity' => 1,
-                'name' => 'Premium Plan',
-            ],
+            'customerId' => 'customer_abc',
+            'subscriptionPlanId' => 'plan_premium',
+            'quantity' => 1,
+            'name' => 'Premium Plan',
         ]);
 
         $response = $this->postWebhook($payload);
@@ -129,13 +142,10 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         ]));
 
         $payload = $this->makePayload('order.paid', 'order_abc123', 'order', [
-            'data' => [
-                'customerId' => 'customer_abc',
-                'total' => 9900,
-                'currency' => 'EUR',
-                'invoiceNumber' => 'INV-001',
-                'paymentMethod' => 'card',
-            ],
+            'customerId' => 'customer_abc',
+            'total' => ['currency' => 'EUR', 'value' => '99.00'],
+            'invoiceNumber' => 'INV-001',
+            'paymentMethod' => 'card',
         ]);
 
         $response = $this->postWebhook($payload);
@@ -168,11 +178,8 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         ]));
 
         $payload = $this->makePayload('order.paid', 'order_tax_1', 'order', [
-            'data' => [
-                'customerId' => 'customer_abc',
-                'total' => 4999,
-                'currency' => 'USD',
-            ],
+            'customerId' => 'customer_abc',
+            'total' => ['currency' => 'USD', 'value' => '49.99'],
         ]);
 
         $response = $this->postWebhook($payload);
@@ -248,9 +255,7 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         ]);
 
         $payload = $this->makePayload('subscription.canceled_immediately', 'sub_cancel', 'subscription', [
-            'data' => [
-                'customerId' => 'customer_abc',
-            ],
+            'customerId' => 'customer_abc',
         ]);
 
         $response = $this->postWebhook($payload);
@@ -260,26 +265,32 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         $this->assertTrue($subscription->isCancelled());
     }
 
-    private function makePayload(string $eventName, string $resourceId, string $resourceName, array $object = []): string
+    /**
+     * @param array<string, mixed> $object
+     */
+    private function makePayload(string $eventName, string $entityId, string $entityType, array $object = []): string
     {
-        return json_encode([
+        return (string) json_encode([
+            'id' => 'webhook_event_'.bin2hex(random_bytes(10)),
+            'resource' => 'webhook_event',
             'eventName' => $eventName,
-            'resourceId' => $resourceId,
-            'resourceName' => $resourceName,
-            'object' => $object,
-            'raisedAt' => now()->toIso8601String(),
+            'entityType' => $entityType,
+            'entityId' => $entityId,
             'testmode' => true,
+            'createdAt' => now()->toIso8601String(),
+            'object' => (object) $object,
         ]);
     }
 
     private function postWebhook(string $payload): \Illuminate\Testing\TestResponse
     {
-        $signature = hash_hmac('sha256', $payload, $this->secret);
+        $timestamp = time();
+        $signature = hash_hmac('sha256', $timestamp.'.'.$payload, $this->secret);
 
         return $this->call(
             'POST',
             'webhooks/vatly',
-            server: ['HTTP_X_VATLY_SIGNATURE' => $signature, 'CONTENT_TYPE' => 'application/json'],
+            server: ['HTTP_VATLY_SIGNATURE' => "t={$timestamp},v1={$signature}", 'CONTENT_TYPE' => 'application/json'],
             content: $payload,
         );
     }

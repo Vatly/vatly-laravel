@@ -9,13 +9,15 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * @property int $id
+ * @property string $vatly_id
+ * @property string $resource
  * @property string $event_name
- * @property string $resource_id
- * @property string $resource_name
- * @property string $vatly_customer_id
- * @property array<string, mixed> $object
+ * @property string $entity_type
+ * @property string $entity_id
  * @property bool $testmode
- * @property \Carbon\Carbon $raised_at
+ * @property \Carbon\Carbon $vatly_created_at
+ * @property ?string $vatly_customer_id
+ * @property array<string, mixed> $object
  */
 class VatlyWebhookCall extends Model
 {
@@ -24,19 +26,21 @@ class VatlyWebhookCall extends Model
     protected $table = 'vatly_webhook_calls';
 
     protected $fillable = [
+        'vatly_id',
+        'resource',
         'event_name',
-        'resource_id',
-        'resource_name',
+        'entity_type',
+        'entity_id',
+        'testmode',
+        'vatly_created_at',
         'vatly_customer_id',
         'object',
-        'raised_at',
-        'testmode',
     ];
 
     protected $casts = [
-        'object' => 'array',
-        'raised_at' => 'datetime',
         'testmode' => 'boolean',
+        'vatly_created_at' => 'datetime',
+        'object' => 'array',
     ];
 
     public static function cleanUp(int $daysToRetain = self::DEFAULT_DAYS_TO_RETAIN): int

@@ -11,24 +11,28 @@ use Vatly\Laravel\Models\VatlyWebhookCall;
 class EloquentWebhookCallRepository implements WebhookCallRepositoryInterface
 {
     /**
-     * @param array<string, mixed> $payload
+     * @param array<string, mixed> $object
      */
     public function record(
+        string $id,
+        string $resource,
         string $eventName,
-        string $resourceId,
-        string $resourceName,
-        array $payload,
-        DateTimeInterface $raisedAt,
+        string $entityType,
+        string $entityId,
         bool $testmode,
+        DateTimeInterface $createdAt,
+        array $object,
         ?string $vatlyCustomerId = null,
     ): void {
         VatlyWebhookCall::create([
+            'vatly_id' => $id,
+            'resource' => $resource,
             'event_name' => $eventName,
-            'resource_id' => $resourceId,
-            'resource_name' => $resourceName,
-            'object' => $payload,
-            'raised_at' => $raisedAt,
+            'entity_type' => $entityType,
+            'entity_id' => $entityId,
             'testmode' => $testmode,
+            'vatly_created_at' => $createdAt,
+            'object' => $object,
             'vatly_customer_id' => $vatlyCustomerId,
         ]);
     }
