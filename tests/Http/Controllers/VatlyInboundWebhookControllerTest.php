@@ -34,12 +34,10 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         User::factory()->create(['vatly_id' => 'customer_foo']);
 
         $payload = $this->makePayload('subscription.started', 'sub_123', 'subscription', [
-            'data' => [
-                'customerId' => 'customer_foo',
-                'subscriptionPlanId' => 'plan_foo',
-                'quantity' => 1,
-                'name' => 'Test Plan',
-            ],
+            'customerId' => 'customer_foo',
+            'subscriptionPlanId' => 'plan_foo',
+            'quantity' => 1,
+            'name' => 'Test Plan',
         ]);
 
         $response = $this->postWebhook($payload);
@@ -109,12 +107,10 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         $user = User::factory()->create(['vatly_id' => 'customer_abc']);
 
         $payload = $this->makePayload('subscription.started', 'sub_999', 'subscription', [
-            'data' => [
-                'customerId' => 'customer_abc',
-                'subscriptionPlanId' => 'plan_premium',
-                'quantity' => 1,
-                'name' => 'Premium Plan',
-            ],
+            'customerId' => 'customer_abc',
+            'subscriptionPlanId' => 'plan_premium',
+            'quantity' => 1,
+            'name' => 'Premium Plan',
         ]);
 
         $response = $this->postWebhook($payload);
@@ -146,13 +142,10 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         ]));
 
         $payload = $this->makePayload('order.paid', 'order_abc123', 'order', [
-            'data' => [
-                'customerId' => 'customer_abc',
-                'total' => 9900,
-                'currency' => 'EUR',
-                'invoiceNumber' => 'INV-001',
-                'paymentMethod' => 'card',
-            ],
+            'customerId' => 'customer_abc',
+            'total' => ['currency' => 'EUR', 'value' => '99.00'],
+            'invoiceNumber' => 'INV-001',
+            'paymentMethod' => 'card',
         ]);
 
         $response = $this->postWebhook($payload);
@@ -185,11 +178,8 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         ]));
 
         $payload = $this->makePayload('order.paid', 'order_tax_1', 'order', [
-            'data' => [
-                'customerId' => 'customer_abc',
-                'total' => 4999,
-                'currency' => 'USD',
-            ],
+            'customerId' => 'customer_abc',
+            'total' => ['currency' => 'USD', 'value' => '49.99'],
         ]);
 
         $response = $this->postWebhook($payload);
@@ -265,9 +255,8 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         ]);
 
         $payload = $this->makePayload('subscription.canceled_immediately', 'sub_cancel', 'subscription', [
-            'data' => [
-                'customerId' => 'customer_abc',
-            ],
+            'customerId' => 'customer_abc',
+            'endedAt' => now()->toIso8601String(),
         ]);
 
         $response = $this->postWebhook($payload);
