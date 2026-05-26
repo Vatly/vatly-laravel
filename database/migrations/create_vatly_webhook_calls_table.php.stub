@@ -14,13 +14,13 @@ return new class extends Migration
         Schema::create('vatly_webhook_calls', function (Blueprint $table) {
             $table->id();
             $table->timestamps();
+            $table->string('vatly_id')->unique();
+            $table->string('resource');
             $table->string('event_name');
-            $table->string('resource_id');
-            $table->string('vatly_customer_id')->nullable();
-            $table->string('resource_name');
+            $table->string('entity_type');
+            $table->string('entity_id')->index();
+            $table->string('vatly_customer_id')->nullable()->index();
             $table->json('object');
-            $table->timestamp('raised_at');
-            $table->boolean('testmode');
         });
     }
 

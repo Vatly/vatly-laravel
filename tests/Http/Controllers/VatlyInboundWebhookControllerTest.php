@@ -277,15 +277,18 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         $this->assertTrue($subscription->isCancelled());
     }
 
-    private function makePayload(string $eventName, string $resourceId, string $resourceName, array $object = []): string
+    /**
+     * @param array<string, mixed> $object
+     */
+    private function makePayload(string $eventName, string $entityId, string $entityType, array $object = []): string
     {
-        return json_encode([
+        return (string) json_encode([
+            'id' => 'webhook_event_'.bin2hex(random_bytes(10)),
+            'resource' => 'webhook_event',
             'eventName' => $eventName,
-            'resourceId' => $resourceId,
-            'resourceName' => $resourceName,
-            'object' => $object,
-            'raisedAt' => now()->toIso8601String(),
-            'testmode' => true,
+            'entityType' => $entityType,
+            'entityId' => $entityId,
+            'object' => (object) $object,
         ]);
     }
 
