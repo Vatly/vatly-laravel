@@ -83,6 +83,8 @@ class EloquentSubscriptionRepository implements SubscriptionRepositoryInterface
             }
             if ($data->endsAt !== null) {
                 $subscription->ends_at = Carbon::instance($data->endsAt);
+            } elseif ($data->clearEndsAt) {
+                $subscription->ends_at = null;
             }
             $subscription->save();
         }
