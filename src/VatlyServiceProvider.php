@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Vatly\Laravel;
 
 use Illuminate\Support\ServiceProvider;
-use Vatly\API\VatlyApiClient;
 use Vatly\Fluent\Actions\CancelSubscription;
 use Vatly\Fluent\Actions\CreateCheckout;
 use Vatly\Fluent\Actions\CreateCustomer;
@@ -14,6 +13,7 @@ use Vatly\Fluent\Actions\GetCheckout;
 use Vatly\Fluent\Actions\GetCustomer;
 use Vatly\Fluent\Actions\GetOrder;
 use Vatly\Fluent\Actions\GetSubscription;
+use Vatly\Fluent\Actions\ResumeSubscription;
 use Vatly\Fluent\Actions\SwapSubscriptionPlan;
 use Vatly\Fluent\BillableFactory;
 use Vatly\Fluent\Contracts\ConfigurationInterface;
@@ -22,6 +22,7 @@ use Vatly\Fluent\Contracts\EventDispatcherInterface;
 use Vatly\Fluent\Contracts\OrderRepositoryInterface;
 use Vatly\Fluent\Contracts\SubscriptionRepositoryInterface;
 use Vatly\Fluent\Contracts\WebhookCallRepositoryInterface;
+use Vatly\Fluent\Vatly;
 use Vatly\Fluent\Webhooks\WebhookProcessor;
 use Vatly\Fluent\Webhooks\WebhookProcessorFactory;
 use Vatly\Laravel\Events\LaravelEventDispatcher;
@@ -61,15 +62,21 @@ class VatlyServiceProvider extends ServiceProvider
 
     private function registerApiClient(): void
     {
-        $this->app->singleton(VatlyApiClient::class, function () {
+        // Build the API client through fluent's Vatly facade so we don't take
+        // a direct dependency on vatly/vatly-api-php. The actions all expect
+        // a VatlyApiClient — we expose the one Vatly owns under its FQCN.
+        $this->app->singleton(Vatly::class, function () {
             $config = $this->app->make(ConfigurationInterface::class);
 
-            $client = new VatlyApiClient();
-            $client->setApiKey($config->getApiKey());
-            $client->setApiEndpoint($config->getApiUrl());
-            $client->setApiVersion($config->getApiVersion());
+            return new Vatly(
+                apiKey: $config->getApiKey(),
+                apiEndpoint: $config->getApiUrl(),
+                apiVersion: $config->getApiVersion(),
+            );
+        });
 
-            return $client;
+        $this->app->singleton(\Vatly\API\VatlyApiClient::class, function () {
+            return $this->app->make(Vatly::class)->getApiClient();
         });
     }
 
@@ -85,12 +92,13 @@ class VatlyServiceProvider extends ServiceProvider
             GetSubscription::class,
             UpdateSubscriptionBilling::class,
             CancelSubscription::class,
+            ResumeSubscription::class,
             SwapSubscriptionPlan::class,
         ];
 
         foreach ($actions as $action) {
             $this->app->singleton($action, function () use ($action) {
-                return new $action($this->app->make(VatlyApiClient::class));
+                return new $action($this->app->make(\Vatly\API\VatlyApiClient::class));
             });
         }
     }
@@ -122,6 +130,7 @@ class VatlyServiceProvider extends ServiceProvider
                 getSubscriptionAction: $this->app->make(GetSubscription::class),
                 swapSubscriptionPlanAction: $this->app->make(SwapSubscriptionPlan::class),
                 cancelSubscriptionAction: $this->app->make(CancelSubscription::class),
+                resumeSubscriptionAction: $this->app->make(ResumeSubscription::class),
                 updateBillingAction: $this->app->make(UpdateSubscriptionBilling::class),
             );
         });
