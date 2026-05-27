@@ -10,6 +10,7 @@ use Vatly\Fluent\Billable as FluentBillable;
 use Vatly\Fluent\BillableFactory;
 use Vatly\Fluent\Builders\CheckoutBuilder;
 use Vatly\Fluent\Builders\SubscriptionBuilder;
+use Vatly\Fluent\Vatly;
 use Vatly\Laravel\Models\Subscription;
 
 class BillableTraitTest extends BaseTestCase
@@ -26,12 +27,19 @@ class BillableTraitTest extends BaseTestCase
         $this->assertSame($user, $billable->owner());
     }
 
-    public function test_billable_factory_is_registered_as_a_singleton(): void
+    public function test_vatly_composition_root_is_a_singleton(): void
     {
-        $factoryA = $this->app->make(BillableFactory::class);
-        $factoryB = $this->app->make(BillableFactory::class);
+        $vatlyA = $this->app->make(Vatly::class);
+        $vatlyB = $this->app->make(Vatly::class);
 
-        $this->assertSame($factoryA, $factoryB);
+        $this->assertSame($vatlyA, $vatlyB);
+    }
+
+    public function test_billable_factory_is_cached_by_the_composition_root(): void
+    {
+        $vatly = $this->app->make(Vatly::class);
+
+        $this->assertSame($vatly->billableFactory(), $vatly->billableFactory());
     }
 
     public function test_subscribed_returns_false_when_no_subscription_exists(): void
@@ -127,13 +135,20 @@ class BillableTraitTest extends BaseTestCase
         $this->assertSame('customer_new', $user->vatly_id);
     }
 
-    public function test_find_by_vatly_customer_id_locates_the_user(): void
+    public function test_find_billable_locates_the_user(): void
     {
         $user = User::factory()->create(['vatly_id' => 'customer_lookup']);
 
-        $found = User::findByVatlyCustomerId('customer_lookup');
+        $found = User::findBillable('customer_lookup');
 
         $this->assertNotNull($found);
         $this->assertSame($user->getKey(), $found->getKey());
+    }
+
+    public function test_find_billable_or_fail_throws_when_no_match(): void
+    {
+        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+
+        User::findBillableOrFail('customer_nonexistent');
     }
 }

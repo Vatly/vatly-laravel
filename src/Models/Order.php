@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Vatly\Fluent\Contracts\BillableInterface;
 use Vatly\Fluent\Contracts\OrderInterface;
+use Vatly\Fluent\Vatly;
 
 /**
  * @property string $vatly_id
@@ -88,16 +89,14 @@ class Order extends Model implements OrderInterface
     }
 
     /**
-     * Get the invoice URL for this order.
+     * Get the hosted invoice URL for this order.
      *
-     * Fetches the order from the Vatly API and returns the invoice link.
+     * Cashier-style convenience: lets consumers iterate the orders relation
+     * and call `invoiceUrl()` on each model directly. Internally delegates
+     * to the framework-agnostic {@see \Vatly\Fluent\OrderHandle::invoiceUrl()}.
      */
     public function invoiceUrl(): ?string
     {
-        /** @var \Vatly\API\VatlyApiClient $client */
-        $client = app()->make(\Vatly\API\VatlyApiClient::class);
-        $apiOrder = $client->orders->get($this->vatly_id);
-
-        return $apiOrder->links->invoice->href ?? null;
+        return app(Vatly::class)->orderHandle($this)->invoiceUrl();
     }
 }

@@ -7,10 +7,11 @@ namespace Vatly\Laravel;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Vatly\API\Resources\Customer;
 use Vatly\Fluent\Billable as FluentBillable;
-use Vatly\Fluent\BillableFactory;
 use Vatly\Fluent\Builders\CheckoutBuilder;
 use Vatly\Fluent\Builders\SubscriptionBuilder;
+use Vatly\Fluent\OrderHandle;
 use Vatly\Fluent\SubscriptionHandle;
+use Vatly\Fluent\Vatly;
 use Vatly\Laravel\Models\Order;
 use Vatly\Laravel\Models\Subscription;
 
@@ -41,7 +42,7 @@ trait Billable
      */
     public function vatlyBillable(): FluentBillable
     {
-        return app(BillableFactory::class)->forOwner($this);
+        return app(Vatly::class)->billable($this);
     }
 
     // --- BillableInterface implementation (reads Eloquent columns) ---
@@ -69,6 +70,23 @@ trait Billable
     public function getVatlyName(): ?string
     {
         return $this->name ?? null;
+    }
+
+    // --- Cashier-shape aliases (bare-verb readability) ---
+
+    public function vatlyId(): ?string
+    {
+        return $this->getVatlyId();
+    }
+
+    public function vatlyEmail(): ?string
+    {
+        return $this->getVatlyEmail();
+    }
+
+    public function vatlyName(): ?string
+    {
+        return $this->getVatlyName();
     }
 
     // --- Eloquent relations (Laravel-specific; can't move to fluent) ---
@@ -111,6 +129,14 @@ trait Billable
         return $this->vatlyBillable()->checkout();
     }
 
+    /**
+     * Build an OrderHandle for one of this owner's orders.
+     */
+    public function order(string $vatlyId): OrderHandle
+    {
+        return $this->vatlyBillable()->order($vatlyId);
+    }
+
     // --- Customer shortcuts ---
 
     /**
@@ -134,15 +160,15 @@ trait Billable
         return $this->vatlyBillable()->createOrGetVatlyCustomer($options);
     }
 
-    // --- Static finders (Laravel-specific) ---
+    // --- Static finders (Laravel-specific; Cashier-aligned names) ---
 
-    public static function findByVatlyCustomerId(string $id): ?static
+    public static function findBillable(string $vatlyId): ?static
     {
-        return static::where('vatly_id', $id)->first();
+        return static::where('vatly_id', $vatlyId)->first();
     }
 
-    public static function findByVatlyCustomerIdOrFail(string $id): static
+    public static function findBillableOrFail(string $vatlyId): static
     {
-        return static::where('vatly_id', $id)->firstOrFail();
+        return static::where('vatly_id', $vatlyId)->firstOrFail();
     }
 }

@@ -7,11 +7,13 @@ namespace Vatly\Laravel\Tests\Http\Controllers;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
+use ReflectionClass;
 use Vatly\API\Resources\Order as ApiOrder;
 use Vatly\API\Types\Money;
 use Vatly\API\Types\TaxSummaryCollection;
 use Vatly\API\VatlyApiClient;
 use Vatly\Fluent\Actions\GetOrder;
+use Vatly\Fluent\Vatly;
 use Vatly\Fluent\Webhooks\WebhookProcessor;
 use Vatly\Laravel\Tests\BaseTestCase;
 
@@ -198,8 +200,26 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
     {
         $action = Mockery::mock(GetOrder::class);
         $action->shouldReceive('execute')->andReturn($order);
-        $this->app->instance(GetOrder::class, $action);
+
+        // The Vatly composition root caches actions and the dependent
+        // WebhookEventFactory / WebhookProcessor internally. To swap a
+        // single action for a test, overwrite the cached slot on the
+        // singleton Vatly and clear the downstream caches so they
+        // re-resolve through the mocked action.
+        $vatly = $this->app->make(Vatly::class);
+
+        $this->writePrivate($vatly, 'getOrder', $action);
+        $this->writePrivate($vatly, 'webhookEventFactory', null);
+        $this->writePrivate($vatly, 'webhookProcessor', null);
+
         $this->app->forgetInstance(WebhookProcessor::class);
+    }
+
+    private function writePrivate(object $target, string $property, mixed $value): void
+    {
+        $ref = (new ReflectionClass($target))->getProperty($property);
+        $ref->setAccessible(true);
+        $ref->setValue($target, $value);
     }
 
     /**
