@@ -4,7 +4,7 @@
 [![Tests](https://github.com/Vatly/vatly-laravel/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Vatly/vatly-laravel/actions/workflows/tests.yml)
 [![Total Downloads](https://img.shields.io/packagist/dt/vatly/vatly-laravel.svg?style=flat-square)](https://packagist.org/packages/vatly/vatly-laravel)
 
-> **Alpha release -- under active development. Expect breaking changes.**
+> **Alpha — under active development. Expect breaking changes between minor versions.**
 
 A Cashier-style integration for [Vatly](https://vatly.com) in your Laravel application. Drop a `Billable` trait on your User model and you get subscriptions, checkouts, customer management, hosted billing update links, and a fully wired webhook endpoint — built around Eloquent and Laravel's IoC, events, and routing.
 
@@ -31,7 +31,7 @@ Full docs at [docs.vatly.com](https://docs.vatly.com). In this repo:
 ## Installation
 
 ```bash
-composer require vatly/vatly-laravel:v0.3.0-alpha.1
+composer require vatly/vatly-laravel:v0.6.0-alpha.1
 ```
 
 Pin to an exact version during alpha — the API will change.
@@ -87,30 +87,44 @@ $checkout = $user->subscribe()
 
 return redirect($checkout->links->checkoutUrl->href);
 
-// Or one-off checkouts with explicit items
+// One-off checkouts with explicit items
 $checkout = $user->checkout()->create(
     items: [['id' => 'plan_premium', 'quantity' => 1]],
     redirectUrlSuccess: 'https://example.com/success',
     redirectUrlCanceled: 'https://example.com/canceled',
 );
 
-// Subscription state
-$user->subscribed();                          // bool, default type
-$user->subscribed('team');                    // bool, custom type
+// Subscription state — Cashier-shape predicates
+$user->subscribed();                                    // bool, default type
+$user->subscribed('team');                              // bool, custom type
 $user->subscription()->active();
 $user->subscription()->onGracePeriod();
-$user->subscription()->cancelled();
+$user->subscription()->canceled();
+$user->subscription()->valid();
+$user->subscription()->ended();
 
-// Swap plan
+// Subscription operations
 $user->subscription()->swap('plan_premium');
+$user->subscription()->cancel();                        // Vatly decides immediate vs grace
+$user->subscription()->resume();                        // while in grace period
+$user->subscription()->updateBilling();                 // signed link for hosted update flow
 
-// Cancel at period end (Vatly decides immediate vs grace period)
-$user->subscription()->cancel();
+// Orders — Cashier-style iteration works on the Eloquent collection too
+foreach ($user->orders as $order) {
+    echo $order->invoiceUrl();                          // hosted invoice URL
+}
+
+// Or explicit lookup
+$invoiceUrl = $user->order('order_abc')->invoiceUrl();
+
+// Static finders
+$user = User::findBillable('customer_xyz');             // ?User
+$user = User::findBillableOrFail('customer_xyz');       // User
 ```
 
-`$user->subscription()` returns a `Vatly\Fluent\SubscriptionHandle` — a thin wrapper around the local `Subscription` Eloquent model with the API-driven operations on it. Reach the underlying model via `$user->subscription()->model()` or query directly with `$user->subscriptions()->where(...)`.
+`$user->subscription()` returns a `Vatly\Fluent\SubscriptionHandle` — a thin wrapper around the local `Subscription` Eloquent model with the API-driven operations on it. The Eloquent model itself also exposes the same operation methods (`cancel`, `swap`, `resume`, `updateBilling`), so `$user->subscriptions->first()->cancel()` works the same way.
 
-For more explicit/namespaced access, `$user->vatlyBillable()` returns the framework-agnostic orchestrator: `$user->vatlyBillable()->subscribed('default')`, `$user->vatlyBillable()->createAsVatlyCustomer()`, etc.
+For more explicit / namespaced access, `$user->vatlyBillable()` returns the framework-agnostic orchestrator: `$user->vatlyBillable()->subscribed('default')`, `$user->vatlyBillable()->createAsVatlyCustomer()`, etc.
 
 See [docs/Subscriptions.md](docs/Subscriptions.md) and [docs/Checkouts.md](docs/Checkouts.md) for the full surface.
 
@@ -150,20 +164,45 @@ composer test
 
 When testing code that calls the `Billable` trait shortcuts, your test models must implement `BillableInterface` (applying the trait does this for you). The contract is enforced at runtime — there's no "loose" mode.
 
-For the `order.paid` webhook flow, the package fetches the full Order from the Vatly API to populate the tax breakdown. In integration tests, swap the `GetOrder` action with a Mockery mock:
+For the `order.paid` webhook flow, the package fetches the full Order from the Vatly API to populate the tax breakdown. The actions are encapsulated by the `Vatly` composition root (not individually bound in the container), so swap one via reflection on the singleton:
 
 ```php
 use Mockery;
+use ReflectionClass;
 use Vatly\Fluent\Actions\GetOrder;
+use Vatly\Fluent\Vatly;
+use Vatly\Fluent\Webhooks\WebhookProcessor;
 
 $action = Mockery::mock(GetOrder::class);
 $action->shouldReceive('execute')->andReturn($yourFakeApiOrder);
-$this->app->instance(GetOrder::class, $action);
+
+$vatly = $this->app->make(Vatly::class);
+$ref = (new ReflectionClass($vatly))->getProperty('getOrder');
+$ref->setAccessible(true);
+$ref->setValue($vatly, $action);
+
+// Clear downstream caches that captured the previous action
+foreach (['webhookEventFactory', 'webhookProcessor'] as $prop) {
+    $r = (new ReflectionClass($vatly))->getProperty($prop);
+    $r->setAccessible(true);
+    $r->setValue($vatly, null);
+}
+
+$this->app->forgetInstance(WebhookProcessor::class);
 ```
+
+See [`tests/Http/Controllers/VatlyInboundWebhookControllerTest.php`](tests/Http/Controllers/VatlyInboundWebhookControllerTest.php) for the helper used in this package's own tests.
 
 ## Under the hood
 
-This package builds on [`vatly/vatly-fluent-php`](https://github.com/Vatly/vatly-fluent-php), which holds the webhook pipeline, contracts, events, DTOs, and the `Vatly\Fluent\Billable` orchestrator. You don't need to interact with fluent directly — it's an implementation detail of vatly-laravel.
+This package is a thin Laravel driver on top of [`vatly/vatly-fluent-php`](https://github.com/Vatly/vatly-fluent-php), which holds the contracts, composition root (`Vatly`), webhook pipeline, domain events, and handle classes (`SubscriptionHandle`, `OrderHandle`). The Laravel side supplies:
+
+- Concrete Eloquent-backed impls of fluent's contracts (repositories, models, config reader, event dispatcher)
+- The `Billable` trait with Cashier-style shortcuts and static finders
+- The HTTP route and controller for inbound webhooks
+- Publishable migrations and configuration
+
+Service binding is minimal: the `VatlyServiceProvider` binds the six contracts to their Eloquent / Laravel impls, then registers `Vatly::class` as a singleton built from a `Vatly\Fluent\Wiring` DTO. Every other fluent service (`BillableFactory`, `WebhookProcessor`, actions, handles) resolves lazily through that singleton.
 
 ## License
 
