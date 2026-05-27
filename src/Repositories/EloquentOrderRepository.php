@@ -10,6 +10,7 @@ use Vatly\Fluent\Contracts\OrderInterface;
 use Vatly\Fluent\Contracts\OrderRepositoryInterface;
 use Vatly\Fluent\Data\StoreOrderData;
 use Vatly\Fluent\Data\UpdateOrderData;
+use Vatly\Fluent\Exceptions\InvalidOrderException;
 use Vatly\Laravel\Models\Order;
 
 class EloquentOrderRepository implements OrderRepositoryInterface
@@ -23,6 +24,21 @@ class EloquentOrderRepository implements OrderRepositoryInterface
     public function findByVatlyId(string $vatlyId): ?OrderInterface
     {
         return Order::where('vatly_id', $vatlyId)->first();
+    }
+
+    public function findForOwnerOrFail(BillableInterface $owner, string $vatlyId): OrderInterface
+    {
+        $order = Order::query()
+            ->where('owner_type', $owner->getMorphClass())
+            ->where('owner_id', $owner->getKey())
+            ->where('vatly_id', $vatlyId)
+            ->first();
+
+        if ($order === null) {
+            throw InvalidOrderException::notFound($vatlyId);
+        }
+
+        return $order;
     }
 
     /**

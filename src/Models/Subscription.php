@@ -8,15 +8,23 @@ use Carbon\Carbon;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Vatly\Fluent\Concerns\DerivesSubscriptionState;
 use Vatly\Fluent\Contracts\BillableInterface;
 use Vatly\Fluent\Contracts\SubscriptionInterface;
+use Vatly\Fluent\SubscriptionHandle;
+use Vatly\Fluent\Vatly;
 
 /**
  * The local representation of a Vatly subscription.
  *
- * State-only — operations (swap, cancel, sync, updateBilling)
- * live on Vatly\Fluent\SubscriptionHandle and are reached via
- * $user->subscription('default').
+ * State accessors satisfy {@see SubscriptionInterface}. The derived
+ * predicates (isActive/isCancelled/isOnGracePeriod/isValid/isRecurring/
+ * isEnded) come from the {@see DerivesSubscriptionState} trait. Operation
+ * methods (cancel/cancelNow/swap/updateBilling/resume) delegate to a
+ * fresh {@see SubscriptionHandle} so Cashier-style consumer code works:
+ *
+ *     $user->subscription('default')->cancel();   // via SubscriptionHandle
+ *     $user->subscriptions->first()->cancel();    // via this model
  *
  * @property BillableInterface $owner
  * @property string $type
@@ -32,6 +40,8 @@ use Vatly\Fluent\Contracts\SubscriptionInterface;
  */
 class Subscription extends Model implements SubscriptionInterface
 {
+    use DerivesSubscriptionState;
+
     public const DEFAULT_TYPE = 'default';
 
     protected $table = 'vatly_subscriptions';
@@ -51,7 +61,7 @@ class Subscription extends Model implements SubscriptionInterface
         return $this->morphTo('owner');
     }
 
-    // --- SubscriptionInterface implementation ---
+    // --- SubscriptionInterface state accessors ---
 
     public function getVatlyId(): string
     {
@@ -88,18 +98,107 @@ class Subscription extends Model implements SubscriptionInterface
         return $this->owner;
     }
 
-    public function isCancelled(): bool
+    // --- Cashier-shape predicate aliases ---
+
+    public function active(): bool
     {
-        return $this->ends_at !== null;
+        return $this->isActive();
     }
 
-    public function isOnGracePeriod(): bool
+    public function canceled(): bool
     {
-        return $this->isCancelled() && $this->ends_at?->isFuture();
+        return $this->isCancelled();
     }
 
-    public function isActive(): bool
+    public function onGracePeriod(): bool
     {
-        return ! $this->isCancelled() || $this->isOnGracePeriod();
+        return $this->isOnGracePeriod();
+    }
+
+    public function valid(): bool
+    {
+        return $this->isValid();
+    }
+
+    public function recurring(): bool
+    {
+        return $this->isRecurring();
+    }
+
+    public function ended(): bool
+    {
+        return $this->isEnded();
+    }
+
+    // --- Cashier-shape operation methods (delegate to SubscriptionHandle) ---
+
+    /**
+     * Cancel the subscription at Vatly.
+     */
+    public function cancel(): void
+    {
+        $this->handle()->cancel();
+    }
+
+    /**
+     * Resume a subscription currently in its grace period.
+     */
+    public function resume(): self
+    {
+        $this->handle()->resume();
+
+        return $this;
+    }
+
+    /**
+     * Swap to a different plan.
+     *
+     * @param array<string, mixed> $options
+     */
+    public function swap(string $planId, array $options = []): self
+    {
+        $this->handle()->swap($planId, $options);
+
+        return $this;
+    }
+
+    /**
+     * Swap to a different plan and invoice immediately.
+     *
+     * @param array<string, mixed> $options
+     */
+    public function swapAndInvoice(string $planId, array $options = []): self
+    {
+        $this->handle()->swapAndInvoice($planId, $options);
+
+        return $this;
+    }
+
+    /**
+     * Create a signed URL where the customer can update billing details.
+     *
+     * @param array<string, mixed> $prefillData
+     */
+    public function updateBilling(array $prefillData = []): string
+    {
+        return $this->handle()->updateBilling($prefillData);
+    }
+
+    /**
+     * Refresh this local record from Vatly.
+     */
+    public function sync(): self
+    {
+        $this->handle()->sync();
+
+        return $this;
+    }
+
+    /**
+     * Build a fresh SubscriptionHandle wrapping this model.
+     */
+    private function handle(): SubscriptionHandle
+    {
+        return app(Vatly::class)->subscriptionHandle($this);
     }
 }
