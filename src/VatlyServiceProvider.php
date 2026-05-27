@@ -14,6 +14,7 @@ use Vatly\Fluent\Actions\GetCheckout;
 use Vatly\Fluent\Actions\GetCustomer;
 use Vatly\Fluent\Actions\GetOrder;
 use Vatly\Fluent\Actions\GetSubscription;
+use Vatly\Fluent\Actions\ResumeSubscription;
 use Vatly\Fluent\Actions\SwapSubscriptionPlan;
 use Vatly\Fluent\BillableFactory;
 use Vatly\Fluent\Contracts\ConfigurationInterface;
@@ -85,6 +86,7 @@ class VatlyServiceProvider extends ServiceProvider
             GetSubscription::class,
             UpdateSubscriptionBilling::class,
             CancelSubscription::class,
+            ResumeSubscription::class,
             SwapSubscriptionPlan::class,
         ];
 
@@ -122,6 +124,7 @@ class VatlyServiceProvider extends ServiceProvider
                 getSubscriptionAction: $this->app->make(GetSubscription::class),
                 swapSubscriptionPlanAction: $this->app->make(SwapSubscriptionPlan::class),
                 cancelSubscriptionAction: $this->app->make(CancelSubscription::class),
+                resumeSubscriptionAction: $this->app->make(ResumeSubscription::class),
                 updateBillingAction: $this->app->make(UpdateSubscriptionBilling::class),
             );
         });
