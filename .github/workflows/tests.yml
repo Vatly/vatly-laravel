@@ -31,11 +31,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # TEMPORARY (remove once vatly/vatly-fluent-php v0.8.0-alpha.1 is tagged on Packagist):
-          # point at fluent's feat/v0.8-remove-billable branch via VCS and alias it to the
-          # constraint declared in composer.json so the rest of the install resolves.
-          composer config repositories.fluent vcs https://github.com/vatly/vatly-fluent-php
-          composer require "vatly/vatly-fluent-php:dev-feat/v0.8-remove-billable as 0.8.0-alpha.1" --no-interaction --no-update
           composer require "illuminate/support:${{ matrix.laravel }}" --no-interaction --no-update
           composer update --prefer-dist --no-interaction
 
