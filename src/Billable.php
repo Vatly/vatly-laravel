@@ -9,6 +9,7 @@ use Vatly\API\Resources\Customer;
 use Vatly\Fluent\Builders\CheckoutBuilder;
 use Vatly\Fluent\Builders\SubscriptionBuilder;
 use Vatly\Fluent\CustomerProfile;
+use Vatly\Fluent\Exceptions\InvalidOrderException;
 use Vatly\Fluent\OrderHandle;
 use Vatly\Fluent\SubscriptionHandle;
 use Vatly\Fluent\Vatly;
@@ -115,11 +116,18 @@ trait Billable
         return app(Vatly::class)->checkoutBuilder($this->customerProfile());
     }
 
+    /**
+     * @throws InvalidOrderException When no order with the given Vatly id exists for this owner.
+     */
     public function order(string $vatlyId): OrderHandle
     {
         $local = $this->orders()
             ->where('vatly_id', $vatlyId)
-            ->firstOrFail();
+            ->first();
+
+        if ($local === null) {
+            throw InvalidOrderException::notFound($vatlyId);
+        }
 
         return app(Vatly::class)->order($local);
     }
@@ -134,8 +142,13 @@ trait Billable
      * directly). The in-memory model is also refreshed so subsequent calls
      * see the new id without an extra query.
      *
-     * @param  array<string, mixed>  $options  Extra payload keys forwarded to the API
-     *                                         (e.g. {'email' => '...'}).
+     * `$options` keys not consumed by `email` / `name` (the host-supplied
+     * defaults the trait fills in from this model) are forwarded as-is to
+     * the create-customer API call — `locale`, `metadata`, etc.
+     *
+     * @param  array<string, mixed>  $options  Create-customer API payload keys.
+     *                                         Caller-supplied `email` / `name`
+     *                                         override the host defaults.
      */
     public function createAsVatlyCustomer(array $options = []): Customer
     {
@@ -144,9 +157,11 @@ trait Billable
             name: $options['name'] ?? $this->vatlyName(),
         );
 
+        unset($options['email'], $options['name']);
+
         $customer = app(Vatly::class)
             ->customers()
-            ->createFor((string) $this->getKey(), $profile);
+            ->createFor((string) $this->getKey(), $profile, $options);
 
         $this->vatly_id = $customer->id;
 

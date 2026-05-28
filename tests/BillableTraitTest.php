@@ -10,8 +10,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Vatly\Fluent\Builders\CheckoutBuilder;
 use Vatly\Fluent\Builders\SubscriptionBuilder;
 use Vatly\Fluent\CustomerProfile;
+use Vatly\Fluent\Exceptions\InvalidOrderException;
+use Vatly\Fluent\OrderHandle;
 use Vatly\Fluent\SubscriptionHandle;
 use Vatly\Fluent\Vatly;
+use Vatly\Laravel\Models\Order;
 use Vatly\Laravel\Models\Subscription;
 
 class BillableTraitTest extends BaseTestCase
@@ -141,5 +144,53 @@ class BillableTraitTest extends BaseTestCase
         $this->expectException(ModelNotFoundException::class);
 
         User::findBillableOrFail('customer_nonexistent');
+    }
+
+    public function test_order_returns_a_handle_for_a_known_order(): void
+    {
+        $user = User::factory()->create();
+
+        Order::create([
+            'owner_type' => $user->getMorphClass(),
+            'owner_id' => $user->getKey(),
+            'vatly_id' => 'order_abc',
+            'status' => 'paid',
+            'total' => 9900,
+            'currency' => 'EUR',
+        ]);
+
+        $handle = $user->order('order_abc');
+
+        $this->assertInstanceOf(OrderHandle::class, $handle);
+        $this->assertSame('order_abc', $handle->getVatlyId());
+    }
+
+    public function test_order_throws_invalid_order_exception_for_an_unknown_id(): void
+    {
+        $user = User::factory()->create();
+
+        $this->expectException(InvalidOrderException::class);
+        $this->expectExceptionMessageMatches('/order_unknown/');
+
+        $user->order('order_unknown');
+    }
+
+    public function test_order_throws_invalid_order_exception_for_an_order_owned_by_someone_else(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+
+        Order::create([
+            'owner_type' => $other->getMorphClass(),
+            'owner_id' => $other->getKey(),
+            'vatly_id' => 'order_someone_else',
+            'status' => 'paid',
+            'total' => 4900,
+            'currency' => 'EUR',
+        ]);
+
+        $this->expectException(InvalidOrderException::class);
+
+        $owner->order('order_someone_else');
     }
 }

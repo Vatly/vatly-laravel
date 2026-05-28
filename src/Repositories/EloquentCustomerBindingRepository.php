@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Vatly\Laravel\Repositories;
 
 use Vatly\Fluent\Contracts\CustomerBindingRepository;
-use Vatly\Laravel\Exceptions\AnonymousVatlyCustomerNotSupportedException;
+use Vatly\Fluent\CustomerService;
 use Vatly\Laravel\VatlyConfig;
 
 /**
@@ -29,20 +29,25 @@ final class EloquentCustomerBindingRepository implements CustomerBindingReposito
     /**
      * Acknowledge that a Vatly customer id has been seen.
      *
-     * For the default Eloquent impl, "tracking" only happens via the
-     * vatly_id column on the billable table — there's no separate place
-     * for unattributed customers. So `record()` is a cheap no-op when
-     * the id is already bound, and a hard failure when it isn't.
+     * Intentionally a no-op for the default Eloquent impl. Fluent's webhook
+     * reactions call `record()` for every incoming customer id — including
+     * the anonymous-checkout case where no host entity has been bound yet —
+     * and rely on the call being idempotent and side-effect-free for any
+     * driver that doesn't separately track unattributed customers.
      *
-     * @throws AnonymousVatlyCustomerNotSupportedException When no host entity carries this id.
+     * For this driver, the binding only exists as a `vatly_id` column on
+     * the billable table, so there's no separate place to record an
+     * unattributed customer. Subscription / order rows persist with a
+     * null `owner_id` and can be linked later via
+     * {@see CustomerService::attribute()}.
+     *
+     * Drivers that want eager tracking of unattributed customers (a
+     * dedicated join table, an audit log, etc.) can swap in a custom
+     * `CustomerBindingRepository`.
      */
     public function record(string $vatlyCustomerId): void
     {
-        $model = $this->config->getBillableModel();
-
-        if (! $model::query()->where('vatly_id', $vatlyCustomerId)->exists()) {
-            throw AnonymousVatlyCustomerNotSupportedException::forVatlyCustomerId($vatlyCustomerId);
-        }
+        // no-op (see docblock).
     }
 
     public function hostCustomerIdFor(string $vatlyCustomerId): ?string

@@ -6,7 +6,6 @@ namespace Vatly\Laravel\Tests\Repositories;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Vatly\Laravel\Exceptions\AnonymousVatlyCustomerNotSupportedException;
 use Vatly\Laravel\Repositories\EloquentCustomerBindingRepository;
 use Vatly\Laravel\Tests\BaseTestCase;
 
@@ -43,23 +42,24 @@ class EloquentCustomerBindingRepositoryTest extends BaseTestCase
         $this->assertSame('cus_first', $user->fresh()->vatly_id);
     }
 
-    public function test_record_is_a_no_op_for_an_already_bound_customer(): void
+    public function test_record_is_a_no_op_for_a_bound_customer(): void
     {
         $user = User::factory()->create(['vatly_id' => 'cus_known']);
 
         $this->repo->record('cus_known');
 
-        // Still exactly one row, vatly_id unchanged.
         $this->assertSame(1, User::query()->where('vatly_id', 'cus_known')->count());
         $this->assertSame('cus_known', $user->fresh()->vatly_id);
     }
 
-    public function test_record_throws_for_an_anonymous_customer(): void
+    public function test_record_is_a_no_op_for_an_anonymous_customer(): void
     {
-        $this->expectException(AnonymousVatlyCustomerNotSupportedException::class);
-        $this->expectExceptionMessageMatches('/cus_anon/');
-
+        // The default Eloquent impl has no separate place to track unattributed
+        // customers. record() is intentionally side-effect-free so the
+        // anonymous-checkout webhook path doesn't blow up.
         $this->repo->record('cus_anon');
+
+        $this->assertSame(0, User::query()->where('vatly_id', 'cus_anon')->count());
     }
 
     public function test_host_customer_id_for_returns_user_id_when_bound(): void
