@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Vatly\Laravel;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Vatly\Laravel\Models\VatlyWebhookCall;
 
 class VatlyHelpers
@@ -22,7 +23,7 @@ class VatlyHelpers
     /**
      * Get the billable instance by its Vatly customer ID.
      *
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
+     * @throws ModelNotFoundException
      */
     public static function findBillableOrFail(string $vatlyCustomerId): Model
     {

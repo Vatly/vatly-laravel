@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Vatly\Laravel\Tests;
 
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Vatly\Fluent\Builders\CheckoutBuilder;
 use Vatly\Fluent\Builders\SubscriptionBuilder;
@@ -29,8 +30,8 @@ class BillableTraitTest extends BaseTestCase
     {
         $user = User::factory()->create([
             'vatly_id' => 'customer_xyz',
-            'email'    => 'sander@example.test',
-            'name'     => 'Sander',
+            'email' => 'sander@example.test',
+            'name' => 'Sander',
         ]);
 
         $profile = $user->customerProfile();
@@ -137,7 +138,7 @@ class BillableTraitTest extends BaseTestCase
 
     public function test_find_billable_or_fail_throws_when_no_match(): void
     {
-        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        $this->expectException(ModelNotFoundException::class);
 
         User::findBillableOrFail('customer_nonexistent');
     }

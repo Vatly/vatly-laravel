@@ -16,7 +16,7 @@ class OrderTest extends BaseTestCase
 
     public function test_it_implements_order_interface(): void
     {
-        $order = new Order();
+        $order = new Order;
 
         $this->assertInstanceOf(OrderInterface::class, $order);
     }

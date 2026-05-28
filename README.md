@@ -121,8 +121,6 @@ $user = User::findBillable('customer_xyz');             // ?User
 $user = User::findBillableOrFail('customer_xyz');       // User
 ```
 
-`$user->subscription()` returns a `Vatly\Fluent\SubscriptionHandle` — a thin wrapper around the local `Subscription` Eloquent model with the API-driven operations on it. The Eloquent model itself also exposes the same operation methods (`cancel`, `swap`, `resume`, `updateBilling`), so `$user->subscriptions->first()->cancel()` works the same way. Analogously, `$user->order('order_abc')` returns a `Vatly\Fluent\OrderHandle` wrapping the local `Order` Eloquent model.
-
 See [docs/Subscriptions.md](docs/Subscriptions.md) and [docs/Checkouts.md](docs/Checkouts.md) for the full surface.
 
 ## Webhooks

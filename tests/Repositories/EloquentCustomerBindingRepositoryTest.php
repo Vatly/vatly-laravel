@@ -6,6 +6,7 @@ namespace Vatly\Laravel\Tests\Repositories;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Vatly\Laravel\Exceptions\AnonymousVatlyCustomerNotSupportedException;
 use Vatly\Laravel\Repositories\EloquentCustomerBindingRepository;
 use Vatly\Laravel\Tests\BaseTestCase;
 
@@ -42,11 +43,23 @@ class EloquentCustomerBindingRepositoryTest extends BaseTestCase
         $this->assertSame('cus_first', $user->fresh()->vatly_id);
     }
 
-    public function test_record_is_a_no_op_for_default_eloquent_driver(): void
+    public function test_record_is_a_no_op_for_an_already_bound_customer(): void
     {
-        $this->repo->record('cus_anon');
+        $user = User::factory()->create(['vatly_id' => 'cus_known']);
 
-        $this->assertSame(0, User::query()->where('vatly_id', 'cus_anon')->count());
+        $this->repo->record('cus_known');
+
+        // Still exactly one row, vatly_id unchanged.
+        $this->assertSame(1, User::query()->where('vatly_id', 'cus_known')->count());
+        $this->assertSame('cus_known', $user->fresh()->vatly_id);
+    }
+
+    public function test_record_throws_for_an_anonymous_customer(): void
+    {
+        $this->expectException(AnonymousVatlyCustomerNotSupportedException::class);
+        $this->expectExceptionMessageMatches('/cus_anon/');
+
+        $this->repo->record('cus_anon');
     }
 
     public function test_host_customer_id_for_returns_user_id_when_bound(): void

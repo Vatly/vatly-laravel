@@ -7,6 +7,7 @@ namespace Vatly\Laravel\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Vatly\Fluent\Contracts\OrderInterface;
+use Vatly\Fluent\OrderHandle;
 use Vatly\Fluent\Vatly;
 
 /**
@@ -85,9 +86,9 @@ class Order extends Model implements OrderInterface
     /**
      * Get the hosted invoice URL for this order.
      *
-     * Cashier-style convenience: lets consumers iterate the orders relation
-     * and call `invoiceUrl()` on each model directly. Internally delegates
-     * to the framework-agnostic {@see \Vatly\Fluent\OrderHandle::invoiceUrl()}.
+     * Lets consumers iterate the orders relation and call `invoiceUrl()`
+     * on each model directly. Internally delegates to the framework-agnostic
+     * {@see OrderHandle::invoiceUrl()}.
      */
     public function invoiceUrl(): ?string
     {

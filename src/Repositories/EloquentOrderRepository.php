@@ -27,12 +27,12 @@ class EloquentOrderRepository implements OrderRepositoryInterface
     public function store(StoreOrderData $data): OrderInterface
     {
         $attrs = [
-            'vatly_id'       => $data->vatlyId,
-            'status'         => $data->status,
-            'total'          => $data->total,
-            'subtotal'       => $data->subtotal,
-            'tax_summary'    => $data->taxSummary?->toArray(),
-            'currency'       => $data->currency,
+            'vatly_id' => $data->vatlyId,
+            'status' => $data->status,
+            'total' => $data->total,
+            'subtotal' => $data->subtotal,
+            'tax_summary' => $data->taxSummary?->toArray(),
+            'currency' => $data->currency,
             'invoice_number' => $data->invoiceNumber,
             'payment_method' => $data->paymentMethod,
         ];
@@ -40,7 +40,7 @@ class EloquentOrderRepository implements OrderRepositoryInterface
         if ($data->hostCustomerId !== null) {
             $model = $this->config->getBillableModel();
             $attrs['owner_type'] = (new $model)->getMorphClass();
-            $attrs['owner_id']   = $data->hostCustomerId;
+            $attrs['owner_id'] = $data->hostCustomerId;
         }
 
         return Order::create($attrs);

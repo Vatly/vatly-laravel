@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use App\Models\User;
 
 return [
     /*
@@ -51,7 +52,7 @@ return [
     | The model class that represents a billable customer in your application.
     |
     */
-    'billable_model' => env('VATLY_BILLABLE_MODEL', \App\Models\User::class),
+    'billable_model' => env('VATLY_BILLABLE_MODEL', User::class),
 
     /*
     |--------------------------------------------------------------------------

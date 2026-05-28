@@ -6,6 +6,7 @@ namespace Vatly\Laravel\Tests\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Mockery;
 use ReflectionClass;
 use Vatly\API\Resources\Order as ApiOrder;
@@ -15,6 +16,8 @@ use Vatly\API\VatlyApiClient;
 use Vatly\Fluent\Actions\GetOrder;
 use Vatly\Fluent\Vatly;
 use Vatly\Fluent\Webhooks\WebhookProcessor;
+use Vatly\Laravel\Models\Order;
+use Vatly\Laravel\Models\Subscription;
 use Vatly\Laravel\Tests\BaseTestCase;
 
 class VatlyInboundWebhookControllerTest extends BaseTestCase
@@ -188,7 +191,7 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
 
         $response->assertStatus(201);
 
-        $order = \Vatly\Laravel\Models\Order::where('vatly_id', 'order_tax_1')->firstOrFail();
+        $order = Order::where('vatly_id', 'order_tax_1')->firstOrFail();
         $this->assertSame(4131, $order->subtotal);
         $this->assertSame('Sales Tax', $order->tax_summary[0]['rate']['name']);
         $this->assertSame(868, $order->tax_summary[0]['amount']);
@@ -264,7 +267,7 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         $user = User::factory()->create(['vatly_id' => 'customer_abc']);
 
         // First create the subscription
-        \Vatly\Laravel\Models\Subscription::create([
+        Subscription::create([
             'owner_type' => $user->getMorphClass(),
             'owner_id' => $user->getKey(),
             'vatly_id' => 'sub_cancel',
@@ -281,12 +284,12 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         $response = $this->postWebhook($payload);
 
         $response->assertStatus(201);
-        $subscription = \Vatly\Laravel\Models\Subscription::where('vatly_id', 'sub_cancel')->first();
+        $subscription = Subscription::where('vatly_id', 'sub_cancel')->first();
         $this->assertTrue($subscription->isCancelled());
     }
 
     /**
-     * @param array<string, mixed> $object
+     * @param  array<string, mixed>  $object
      */
     private function makePayload(string $eventName, string $entityId, string $entityType, array $object = []): string
     {
@@ -302,7 +305,7 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         ]);
     }
 
-    private function postWebhook(string $payload): \Illuminate\Testing\TestResponse
+    private function postWebhook(string $payload): TestResponse
     {
         $timestamp = time();
         $signature = hash_hmac('sha256', $timestamp.'.'.$payload, $this->secret);

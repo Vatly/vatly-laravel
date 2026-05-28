@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Vatly\Laravel\Repositories;
 
 use Vatly\Fluent\Contracts\CustomerBindingRepository;
+use Vatly\Laravel\Exceptions\AnonymousVatlyCustomerNotSupportedException;
 use Vatly\Laravel\VatlyConfig;
 
 /**
@@ -17,9 +18,7 @@ use Vatly\Laravel\VatlyConfig;
  */
 final class EloquentCustomerBindingRepository implements CustomerBindingRepository
 {
-    public function __construct(private VatlyConfig $config)
-    {
-    }
+    public function __construct(private VatlyConfig $config) {}
 
     public function bind(string $vatlyCustomerId, string $hostCustomerId): void
     {
@@ -27,12 +26,23 @@ final class EloquentCustomerBindingRepository implements CustomerBindingReposito
         $model::query()->whereKey($hostCustomerId)->update(['vatly_id' => $vatlyCustomerId]);
     }
 
+    /**
+     * Acknowledge that a Vatly customer id has been seen.
+     *
+     * For the default Eloquent impl, "tracking" only happens via the
+     * vatly_id column on the billable table — there's no separate place
+     * for unattributed customers. So `record()` is a cheap no-op when
+     * the id is already bound, and a hard failure when it isn't.
+     *
+     * @throws AnonymousVatlyCustomerNotSupportedException When no host entity carries this id.
+     */
     public function record(string $vatlyCustomerId): void
     {
-        // No-op for the Laravel driver: anonymous customers leave a null
-        // owner on subscription/order rows until attributed later. Drivers
-        // that want explicit unattributed tracking can swap in a custom
-        // CustomerBindingRepository.
+        $model = $this->config->getBillableModel();
+
+        if (! $model::query()->where('vatly_id', $vatlyCustomerId)->exists()) {
+            throw AnonymousVatlyCustomerNotSupportedException::forVatlyCustomerId($vatlyCustomerId);
+        }
     }
 
     public function hostCustomerIdFor(string $vatlyCustomerId): ?string

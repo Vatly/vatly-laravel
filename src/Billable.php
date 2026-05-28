@@ -19,9 +19,9 @@ use Vatly\Laravel\Models\Subscription;
 /**
  * Vatly billing capability for an Eloquent model.
  *
- * Apply on your User/Tenant model. The trait exposes Cashier-style methods
- * (`subscribe`, `subscription`, `checkout`, `createAsVatlyCustomer`, …) that
- * compose fluent's framework-agnostic surface with Eloquent queries.
+ * Apply on your User/Tenant model. The trait exposes `subscribe`,
+ * `subscription`, `checkout`, `createAsVatlyCustomer`, … — composing
+ * fluent's framework-agnostic surface with Eloquent queries.
  *
  * @property string|null $vatly_id
  * @property string|null $email
@@ -62,8 +62,8 @@ trait Billable
     {
         return new CustomerProfile(
             vatlyId: $this->vatlyId(),
-            email:   $this->vatlyEmail(),
-            name:    $this->vatlyName(),
+            email: $this->vatlyEmail(),
+            name: $this->vatlyName(),
         );
     }
 
@@ -85,7 +85,7 @@ trait Billable
         return $this->morphMany(Order::class, 'owner')->orderByDesc('created_at');
     }
 
-    // --- Cashier-style subscription accessors ---
+    // --- Subscription accessors ---
 
     public function subscribe(): SubscriptionBuilder
     {
@@ -134,14 +134,14 @@ trait Billable
      * directly). The in-memory model is also refreshed so subsequent calls
      * see the new id without an extra query.
      *
-     * @param array<string, mixed> $options Extra payload keys forwarded to the API
-     *                                      (e.g. {'email' => '...'}).
+     * @param  array<string, mixed>  $options  Extra payload keys forwarded to the API
+     *                                         (e.g. {'email' => '...'}).
      */
     public function createAsVatlyCustomer(array $options = []): Customer
     {
         $profile = new CustomerProfile(
             email: $options['email'] ?? $this->vatlyEmail(),
-            name:  $options['name']  ?? $this->vatlyName(),
+            name: $options['name'] ?? $this->vatlyName(),
         );
 
         $customer = app(Vatly::class)
@@ -163,7 +163,7 @@ trait Billable
     }
 
     /**
-     * @param array<string, mixed> $options
+     * @param  array<string, mixed>  $options
      */
     public function createOrGetVatlyCustomer(array $options = []): Customer
     {

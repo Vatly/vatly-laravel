@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Vatly\Laravel\Billable;
@@ -21,7 +22,7 @@ class User extends Authenticatable
     }
 }
 
-class UserFactory extends \Illuminate\Database\Eloquent\Factories\Factory
+class UserFactory extends Factory
 {
     protected $model = User::class;
 

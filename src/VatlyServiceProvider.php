@@ -28,20 +28,20 @@ class VatlyServiceProvider extends ServiceProvider
 
         // Laravel-specific impls of the fluent contracts.
         $this->app->singleton(VatlyConfig::class);
-        $this->app->bind(ConfigurationInterface::class,          VatlyConfig::class);
+        $this->app->bind(ConfigurationInterface::class, VatlyConfig::class);
         $this->app->bind(SubscriptionRepositoryInterface::class, EloquentSubscriptionRepository::class);
-        $this->app->bind(OrderRepositoryInterface::class,        EloquentOrderRepository::class);
-        $this->app->bind(WebhookCallRepositoryInterface::class,  EloquentWebhookCallRepository::class);
-        $this->app->bind(CustomerBindingRepository::class,       EloquentCustomerBindingRepository::class);
-        $this->app->bind(EventDispatcherInterface::class,        LaravelEventDispatcher::class);
+        $this->app->bind(OrderRepositoryInterface::class, EloquentOrderRepository::class);
+        $this->app->bind(WebhookCallRepositoryInterface::class, EloquentWebhookCallRepository::class);
+        $this->app->bind(CustomerBindingRepository::class, EloquentCustomerBindingRepository::class);
+        $this->app->bind(EventDispatcherInterface::class, LaravelEventDispatcher::class);
 
         // Composition root — fluent does the wiring; we just hand it the impls.
         $this->app->singleton(Vatly::class, fn ($app) => new Vatly(new Wiring(
-            config:           $app->make(ConfigurationInterface::class),
-            subscriptions:    $app->make(SubscriptionRepositoryInterface::class),
-            orders:           $app->make(OrderRepositoryInterface::class),
-            webhookCalls:     $app->make(WebhookCallRepositoryInterface::class),
-            events:           $app->make(EventDispatcherInterface::class),
+            config: $app->make(ConfigurationInterface::class),
+            subscriptions: $app->make(SubscriptionRepositoryInterface::class),
+            orders: $app->make(OrderRepositoryInterface::class),
+            webhookCalls: $app->make(WebhookCallRepositoryInterface::class),
+            events: $app->make(EventDispatcherInterface::class),
             customerBindings: $app->make(CustomerBindingRepository::class),
         )));
 

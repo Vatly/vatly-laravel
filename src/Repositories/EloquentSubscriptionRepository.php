@@ -29,16 +29,16 @@ class EloquentSubscriptionRepository implements SubscriptionRepositoryInterface
     {
         $attrs = [
             'vatly_id' => $data->vatlyId,
-            'type'     => $data->type,
-            'plan_id'  => $data->planId,
-            'name'     => $data->name,
+            'type' => $data->type,
+            'plan_id' => $data->planId,
+            'name' => $data->name,
             'quantity' => $data->quantity,
         ];
 
         if ($data->hostCustomerId !== null) {
             $model = $this->config->getBillableModel();
             $attrs['owner_type'] = (new $model)->getMorphClass();
-            $attrs['owner_id']   = $data->hostCustomerId;
+            $attrs['owner_id'] = $data->hostCustomerId;
         }
 
         return Subscription::create($attrs);

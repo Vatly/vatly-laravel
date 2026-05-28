@@ -11,7 +11,7 @@ use Vatly\Laravel\Models\VatlyWebhookCall;
 class EloquentWebhookCallRepository implements WebhookCallRepositoryInterface
 {
     /**
-     * @param array<string, mixed> $object
+     * @param  array<string, mixed>  $object
      */
     public function record(
         string $id,
