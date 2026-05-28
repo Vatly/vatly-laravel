@@ -6,55 +6,37 @@ namespace Vatly\Laravel;
 
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Vatly\API\Resources\Customer;
-use Vatly\Fluent\Billable as FluentBillable;
 use Vatly\Fluent\Builders\CheckoutBuilder;
 use Vatly\Fluent\Builders\SubscriptionBuilder;
-use Vatly\Fluent\OrderHandle;
-use Vatly\Fluent\SubscriptionHandle;
+use Vatly\Fluent\CustomerProfile;
+use Vatly\Fluent\Subscription as FluentSubscription;
 use Vatly\Fluent\Vatly;
+use Vatly\Laravel\Exceptions\NoVatlyCustomer;
 use Vatly\Laravel\Models\Order;
 use Vatly\Laravel\Models\Subscription;
 
 /**
  * Vatly billing capability for an Eloquent model.
  *
- * Apply on your User/Tenant model (also implementing
- * Vatly\Fluent\Contracts\BillableInterface). Methods are Cashier-style
- * shortcuts that proxy to a Vatly\Fluent\Billable orchestrator — drivers
- * in other frameworks expose the same surface through their own accessor.
+ * Apply on your User/Tenant model. The trait exposes Cashier-style methods
+ * (`subscribe`, `subscription`, `checkout`, `createAsVatlyCustomer`, …) that
+ * compose fluent's framework-agnostic surface with Eloquent queries.
  *
  * @property string|null $vatly_id
  * @property string|null $email
  * @property string|null $name
  *
  * @method static where(string $column, mixed $value)
- * @method bool saveQuietly()
  * @method mixed getKey()
  * @method string getMorphClass()
  */
 trait Billable
 {
-    /**
-     * Access the framework-agnostic Vatly orchestrator for this owner.
-     *
-     * Use this directly when you want to be explicit about the namespace,
-     * or for operations not exposed as shortcut methods on this trait.
-     */
-    public function vatlyBillable(): FluentBillable
-    {
-        return app(Vatly::class)->billable($this);
-    }
+    // --- Vatly identity / profile accessors ---
 
-    // --- BillableInterface implementation (reads Eloquent columns) ---
-
-    public function getVatlyId(): ?string
+    public function vatlyId(): ?string
     {
         return $this->vatly_id;
-    }
-
-    public function setVatlyId(string $id): void
-    {
-        $this->vatly_id = $id;
     }
 
     public function hasVatlyId(): bool
@@ -62,34 +44,29 @@ trait Billable
         return $this->vatly_id !== null;
     }
 
-    public function getVatlyEmail(): ?string
+    public function vatlyEmail(): ?string
     {
         return $this->email ?? null;
     }
 
-    public function getVatlyName(): ?string
+    public function vatlyName(): ?string
     {
         return $this->name ?? null;
     }
 
-    // --- Cashier-shape aliases (bare-verb readability) ---
-
-    public function vatlyId(): ?string
+    /**
+     * Snapshot the host-side fields fluent uses when talking to the API.
+     */
+    public function customerProfile(): CustomerProfile
     {
-        return $this->getVatlyId();
+        return new CustomerProfile(
+            vatlyId: $this->vatlyId(),
+            email:   $this->vatlyEmail(),
+            name:    $this->vatlyName(),
+        );
     }
 
-    public function vatlyEmail(): ?string
-    {
-        return $this->getVatlyEmail();
-    }
-
-    public function vatlyName(): ?string
-    {
-        return $this->getVatlyName();
-    }
-
-    // --- Eloquent relations (Laravel-specific; can't move to fluent) ---
+    // --- Eloquent relations (Laravel-specific) ---
 
     /**
      * @return MorphMany<Subscription>
@@ -107,49 +84,81 @@ trait Billable
         return $this->morphMany(Order::class, 'owner')->orderByDesc('created_at');
     }
 
-    // --- Cashier-style shortcuts (proxy to the orchestrator) ---
+    // --- Cashier-style subscription accessors ---
 
     public function subscribe(): SubscriptionBuilder
     {
-        return $this->vatlyBillable()->subscribe();
+        return app(Vatly::class)->subscriptionBuilder($this->customerProfile());
     }
 
     public function subscribed(string $type = Subscription::DEFAULT_TYPE): bool
     {
-        return $this->vatlyBillable()->subscribed($type);
+        $subscription = $this->subscriptions()
+            ->where('type', $type)
+            ->first();
+
+        return $subscription !== null && $subscription->isActive();
     }
 
-    public function subscription(string $type = Subscription::DEFAULT_TYPE): ?SubscriptionHandle
+    public function subscription(string $type = Subscription::DEFAULT_TYPE): ?FluentSubscription
     {
-        return $this->vatlyBillable()->subscription($type);
+        $local = $this->subscriptions()
+            ->where('type', $type)
+            ->first();
+
+        return $local !== null ? app(Vatly::class)->subscription($local) : null;
     }
 
     public function checkout(): CheckoutBuilder
     {
-        return $this->vatlyBillable()->checkout();
+        return app(Vatly::class)->checkoutBuilder($this->customerProfile());
     }
 
-    /**
-     * Build an OrderHandle for one of this owner's orders.
-     */
-    public function order(string $vatlyId): OrderHandle
+    public function order(string $vatlyId): \Vatly\Fluent\Order
     {
-        return $this->vatlyBillable()->order($vatlyId);
+        $local = $this->orders()
+            ->where('vatly_id', $vatlyId)
+            ->firstOrFail();
+
+        return app(Vatly::class)->order($local);
     }
 
-    // --- Customer shortcuts ---
+    // --- Customer-creation shortcuts ---
 
     /**
-     * @param array<string, mixed> $options
+     * Create the Vatly customer for this owner and bind the resulting id.
+     *
+     * The host id is written via the configured CustomerBindingRepository
+     * (which for the default Eloquent impl updates the `vatly_id` column
+     * directly). The in-memory model is also refreshed so subsequent calls
+     * see the new id without an extra query.
+     *
+     * @param array<string, mixed> $options Extra payload keys forwarded to the API
+     *                                      (e.g. {'email' => '...'}).
      */
     public function createAsVatlyCustomer(array $options = []): Customer
     {
-        return $this->vatlyBillable()->createAsVatlyCustomer($options);
+        $profile = new CustomerProfile(
+            email: $options['email'] ?? $this->vatlyEmail(),
+            name:  $options['name']  ?? $this->vatlyName(),
+        );
+
+        $customer = app(Vatly::class)
+            ->customers()
+            ->createFor((string) $this->getKey(), $profile);
+
+        $this->vatly_id = $customer->id;
+
+        return $customer;
     }
 
     public function asVatlyCustomer(): Customer
     {
-        return $this->vatlyBillable()->asVatlyCustomer();
+        if (! $this->hasVatlyId()) {
+            throw NoVatlyCustomer::notYetCreated($this);
+        }
+
+        return app(Vatly::class)->customers()->findByVatlyId((string) $this->vatlyId());
     }
 
     /**
@@ -157,10 +166,14 @@ trait Billable
      */
     public function createOrGetVatlyCustomer(array $options = []): Customer
     {
-        return $this->vatlyBillable()->createOrGetVatlyCustomer($options);
+        if ($this->hasVatlyId()) {
+            return $this->asVatlyCustomer();
+        }
+
+        return $this->createAsVatlyCustomer($options);
     }
 
-    // --- Static finders (Laravel-specific; Cashier-aligned names) ---
+    // --- Static finders ---
 
     public static function findBillable(string $vatlyId): ?static
     {

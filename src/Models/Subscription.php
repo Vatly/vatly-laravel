@@ -9,9 +9,8 @@ use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Vatly\Fluent\Concerns\DerivesSubscriptionState;
-use Vatly\Fluent\Contracts\BillableInterface;
 use Vatly\Fluent\Contracts\SubscriptionInterface;
-use Vatly\Fluent\SubscriptionHandle;
+use Vatly\Fluent\Subscription as FluentSubscription;
 use Vatly\Fluent\Vatly;
 
 /**
@@ -21,12 +20,11 @@ use Vatly\Fluent\Vatly;
  * predicates (isActive/isCancelled/isOnGracePeriod/isValid/isRecurring/
  * isEnded) come from the {@see DerivesSubscriptionState} trait. Operation
  * methods (cancel/cancelNow/swap/updateBilling/resume) delegate to a
- * fresh {@see SubscriptionHandle} so Cashier-style consumer code works:
+ * fresh {@see FluentSubscription} so Cashier-style consumer code works:
  *
- *     $user->subscription('default')->cancel();   // via SubscriptionHandle
+ *     $user->subscription('default')->cancel();   // via Vatly\Fluent\Subscription
  *     $user->subscriptions->first()->cancel();    // via this model
  *
- * @property BillableInterface $owner
  * @property string $type
  * @property string $plan_id
  * @property string $vatly_id
@@ -93,11 +91,6 @@ class Subscription extends Model implements SubscriptionInterface
         return $this->ends_at;
     }
 
-    public function getOwner(): BillableInterface
-    {
-        return $this->owner;
-    }
-
     // --- Cashier-shape predicate aliases ---
 
     public function active(): bool
@@ -130,7 +123,7 @@ class Subscription extends Model implements SubscriptionInterface
         return $this->isEnded();
     }
 
-    // --- Cashier-shape operation methods (delegate to SubscriptionHandle) ---
+    // --- Cashier-shape operation methods (delegate to Vatly\Fluent\Subscription) ---
 
     /**
      * Cancel the subscription at Vatly.
@@ -195,10 +188,10 @@ class Subscription extends Model implements SubscriptionInterface
     }
 
     /**
-     * Build a fresh SubscriptionHandle wrapping this model.
+     * Build a fresh fluent Subscription wrapping this model.
      */
-    private function handle(): SubscriptionHandle
+    private function handle(): FluentSubscription
     {
-        return app(Vatly::class)->subscriptionHandle($this);
+        return app(Vatly::class)->subscription($this);
     }
 }

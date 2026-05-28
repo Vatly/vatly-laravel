@@ -6,25 +6,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Vatly\Fluent\Contracts\BillableInterface;
 use Vatly\Laravel\Billable;
 
-class User extends Authenticatable implements BillableInterface
+class User extends Authenticatable
 {
     use Billable;
     use HasFactory;
 
     protected $guarded = [];
-
-    public function getKey(): string|int
-    {
-        return parent::getKey();
-    }
-
-    public function save(array $options = []): mixed
-    {
-        return parent::save($options);
-    }
 
     protected static function newFactory()
     {

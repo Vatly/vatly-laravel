@@ -6,7 +6,6 @@ namespace Vatly\Laravel\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
-use Vatly\Fluent\Contracts\BillableInterface;
 use Vatly\Fluent\Contracts\OrderInterface;
 use Vatly\Fluent\Vatly;
 
@@ -78,11 +77,6 @@ class Order extends Model implements OrderInterface
         return $this->payment_method;
     }
 
-    public function getOwner(): BillableInterface
-    {
-        return $this->owner;
-    }
-
     public function isPaid(): bool
     {
         return $this->status === 'paid';
@@ -93,10 +87,10 @@ class Order extends Model implements OrderInterface
      *
      * Cashier-style convenience: lets consumers iterate the orders relation
      * and call `invoiceUrl()` on each model directly. Internally delegates
-     * to the framework-agnostic {@see \Vatly\Fluent\OrderHandle::invoiceUrl()}.
+     * to the framework-agnostic {@see \Vatly\Fluent\Order::invoiceUrl()}.
      */
     public function invoiceUrl(): ?string
     {
-        return app(Vatly::class)->orderHandle($this)->invoiceUrl();
+        return app(Vatly::class)->order($this)->invoiceUrl();
     }
 }

@@ -6,7 +6,7 @@ namespace Vatly\Laravel;
 
 use Illuminate\Support\ServiceProvider;
 use Vatly\Fluent\Contracts\ConfigurationInterface;
-use Vatly\Fluent\Contracts\CustomerRepositoryInterface;
+use Vatly\Fluent\Contracts\CustomerBindingRepository;
 use Vatly\Fluent\Contracts\EventDispatcherInterface;
 use Vatly\Fluent\Contracts\OrderRepositoryInterface;
 use Vatly\Fluent\Contracts\SubscriptionRepositoryInterface;
@@ -15,7 +15,7 @@ use Vatly\Fluent\Vatly;
 use Vatly\Fluent\Webhooks\WebhookProcessor;
 use Vatly\Fluent\Wiring;
 use Vatly\Laravel\Events\LaravelEventDispatcher;
-use Vatly\Laravel\Repositories\EloquentCustomerRepository;
+use Vatly\Laravel\Repositories\EloquentCustomerBindingRepository;
 use Vatly\Laravel\Repositories\EloquentOrderRepository;
 use Vatly\Laravel\Repositories\EloquentSubscriptionRepository;
 use Vatly\Laravel\Repositories\EloquentWebhookCallRepository;
@@ -28,21 +28,21 @@ class VatlyServiceProvider extends ServiceProvider
 
         // Laravel-specific impls of the fluent contracts.
         $this->app->singleton(VatlyConfig::class);
-        $this->app->bind(ConfigurationInterface::class,         VatlyConfig::class);
-        $this->app->bind(CustomerRepositoryInterface::class,    EloquentCustomerRepository::class);
+        $this->app->bind(ConfigurationInterface::class,          VatlyConfig::class);
         $this->app->bind(SubscriptionRepositoryInterface::class, EloquentSubscriptionRepository::class);
-        $this->app->bind(OrderRepositoryInterface::class,       EloquentOrderRepository::class);
-        $this->app->bind(WebhookCallRepositoryInterface::class, EloquentWebhookCallRepository::class);
-        $this->app->bind(EventDispatcherInterface::class,       LaravelEventDispatcher::class);
+        $this->app->bind(OrderRepositoryInterface::class,        EloquentOrderRepository::class);
+        $this->app->bind(WebhookCallRepositoryInterface::class,  EloquentWebhookCallRepository::class);
+        $this->app->bind(CustomerBindingRepository::class,       EloquentCustomerBindingRepository::class);
+        $this->app->bind(EventDispatcherInterface::class,        LaravelEventDispatcher::class);
 
         // Composition root — fluent does the wiring; we just hand it the impls.
         $this->app->singleton(Vatly::class, fn ($app) => new Vatly(new Wiring(
-            config:        $app->make(ConfigurationInterface::class),
-            subscriptions: $app->make(SubscriptionRepositoryInterface::class),
-            customers:     $app->make(CustomerRepositoryInterface::class),
-            orders:        $app->make(OrderRepositoryInterface::class),
-            webhookCalls:  $app->make(WebhookCallRepositoryInterface::class),
-            events:        $app->make(EventDispatcherInterface::class),
+            config:           $app->make(ConfigurationInterface::class),
+            subscriptions:    $app->make(SubscriptionRepositoryInterface::class),
+            orders:           $app->make(OrderRepositoryInterface::class),
+            webhookCalls:     $app->make(WebhookCallRepositoryInterface::class),
+            events:           $app->make(EventDispatcherInterface::class),
+            customerBindings: $app->make(CustomerBindingRepository::class),
         )));
 
         // WebhookProcessor is reached by the inbound controller via the
