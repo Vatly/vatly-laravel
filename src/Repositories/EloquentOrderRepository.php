@@ -37,10 +37,10 @@ class EloquentOrderRepository implements OrderRepositoryInterface
             'payment_method' => $data->paymentMethod,
         ];
 
-        if ($data->hostId !== null) {
+        if ($data->hostCustomerId !== null) {
             $model = $this->config->getBillableModel();
             $attrs['owner_type'] = (new $model)->getMorphClass();
-            $attrs['owner_id']   = $data->hostId;
+            $attrs['owner_id']   = $data->hostCustomerId;
         }
 
         return Order::create($attrs);

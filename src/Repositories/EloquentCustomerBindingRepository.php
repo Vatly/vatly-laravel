@@ -13,7 +13,7 @@ use Vatly\Laravel\VatlyConfig;
  * `vatly_id` column added by the published billable-columns migration).
  *
  * Drivers that can't add a column to the host table can swap in a join-table
- * implementation instead — see fluent's recipes for the pattern.
+ * implementation instead — see fluent's README step 2 for the pattern.
  */
 final class EloquentCustomerBindingRepository implements CustomerBindingRepository
 {
@@ -21,13 +21,13 @@ final class EloquentCustomerBindingRepository implements CustomerBindingReposito
     {
     }
 
-    public function bind(string $vatlyId, string $hostId): void
+    public function bind(string $vatlyCustomerId, string $hostCustomerId): void
     {
         $model = $this->config->getBillableModel();
-        $model::query()->whereKey($hostId)->update(['vatly_id' => $vatlyId]);
+        $model::query()->whereKey($hostCustomerId)->update(['vatly_id' => $vatlyCustomerId]);
     }
 
-    public function record(string $vatlyId): void
+    public function record(string $vatlyCustomerId): void
     {
         // No-op for the Laravel driver: anonymous customers leave a null
         // owner on subscription/order rows until attributed later. Drivers
@@ -35,19 +35,19 @@ final class EloquentCustomerBindingRepository implements CustomerBindingReposito
         // CustomerBindingRepository.
     }
 
-    public function hostIdFor(string $vatlyId): ?string
+    public function hostCustomerIdFor(string $vatlyCustomerId): ?string
     {
         $model = $this->config->getBillableModel();
         $instance = new $model;
-        $key = $model::query()->where('vatly_id', $vatlyId)->value($instance->getKeyName());
+        $key = $model::query()->where('vatly_id', $vatlyCustomerId)->value($instance->getKeyName());
 
         return $key !== null ? (string) $key : null;
     }
 
-    public function vatlyIdFor(string $hostId): ?string
+    public function vatlyCustomerIdFor(string $hostCustomerId): ?string
     {
         $model = $this->config->getBillableModel();
 
-        return $model::query()->whereKey($hostId)->value('vatly_id');
+        return $model::query()->whereKey($hostCustomerId)->value('vatly_id');
     }
 }

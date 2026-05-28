@@ -35,10 +35,10 @@ class EloquentSubscriptionRepository implements SubscriptionRepositoryInterface
             'quantity' => $data->quantity,
         ];
 
-        if ($data->hostId !== null) {
+        if ($data->hostCustomerId !== null) {
             $model = $this->config->getBillableModel();
             $attrs['owner_type'] = (new $model)->getMorphClass();
-            $attrs['owner_id']   = $data->hostId;
+            $attrs['owner_id']   = $data->hostCustomerId;
         }
 
         return Subscription::create($attrs);
