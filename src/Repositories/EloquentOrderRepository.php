@@ -28,6 +28,7 @@ class EloquentOrderRepository implements OrderRepositoryInterface
     {
         $attrs = [
             'vatly_id' => $data->vatlyId,
+            'customer_id' => $data->customerId,
             'status' => $data->status,
             'total' => $data->total,
             'subtotal' => $data->subtotal,

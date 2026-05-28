@@ -29,6 +29,7 @@ class EloquentSubscriptionRepository implements SubscriptionRepositoryInterface
     {
         $attrs = [
             'vatly_id' => $data->vatlyId,
+            'customer_id' => $data->customerId,
             'type' => $data->type,
             'plan_id' => $data->planId,
             'name' => $data->name,

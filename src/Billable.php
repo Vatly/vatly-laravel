@@ -29,6 +29,7 @@ use Vatly\Laravel\Models\Subscription;
  * @property string|null $name
  *
  * @method static where(string $column, mixed $value)
+ * @method bool save()
  * @method mixed getKey()
  * @method string getMorphClass()
  */
@@ -187,6 +188,50 @@ trait Billable
         }
 
         return $this->createAsVatlyCustomer($options);
+    }
+
+    /**
+     * Claim an anonymous Vatly customer for this host entity.
+     *
+     * Use this on a user-signup hook when the user paid via guest checkout
+     * before the account existed. Pass the Vatly customer id (typically
+     * stashed on the checkout-success redirect or in the session) and this
+     * method:
+     *
+     *   1. binds the Vatly id ↔ host id pair (via the CustomerBindingRepository),
+     *   2. writes `vatly_id` onto this model so subsequent lookups find it,
+     *   3. backfills `owner_type` / `owner_id` on every `vatly_subscriptions`
+     *      and `vatly_orders` row that carries this `customer_id` but had no
+     *      owner yet — the rows the webhook persisted during the anonymous
+     *      flow.
+     *
+     * Returns the number of subscription + order rows that were re-attributed.
+     */
+    public function claimVatlyCustomer(string $vatlyCustomerId): int
+    {
+        app(Vatly::class)
+            ->customers()
+            ->attribute($vatlyCustomerId, (string) $this->getKey());
+
+        $this->vatly_id = $vatlyCustomerId;
+        $this->save();
+
+        $ownerAttrs = [
+            'owner_type' => $this->getMorphClass(),
+            'owner_id' => $this->getKey(),
+        ];
+
+        $subscriptions = Subscription::query()
+            ->whereNull('owner_id')
+            ->where('customer_id', $vatlyCustomerId)
+            ->update($ownerAttrs);
+
+        $orders = Order::query()
+            ->whereNull('owner_id')
+            ->where('customer_id', $vatlyCustomerId)
+            ->update($ownerAttrs);
+
+        return $subscriptions + $orders;
     }
 
     // --- Static finders ---

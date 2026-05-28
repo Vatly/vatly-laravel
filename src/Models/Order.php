@@ -12,8 +12,9 @@ use Vatly\Fluent\Vatly;
 
 /**
  * @property string $vatly_id
- * @property string $owner_type
- * @property int $owner_id
+ * @property string|null $owner_type
+ * @property int|null $owner_id
+ * @property string|null $customer_id The Vatly customer id (cus_…), populated even for anonymous flows.
  * @property string $status
  * @property int $total
  * @property int|null $subtotal

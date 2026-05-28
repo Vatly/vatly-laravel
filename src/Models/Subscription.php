@@ -30,6 +30,7 @@ use Vatly\Fluent\Vatly;
  * @property string $vatly_id
  * @property string $name
  * @property int $quantity
+ * @property string|null $customer_id The Vatly customer id (cus_…), populated even for anonymous flows.
  * @property Carbon|null $trial_ends_at
  * @property Carbon|null $ends_at
  *

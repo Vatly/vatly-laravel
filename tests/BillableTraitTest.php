@@ -193,4 +193,61 @@ class BillableTraitTest extends BaseTestCase
 
         $owner->order('order_someone_else');
     }
+
+    public function test_claim_vatly_customer_binds_and_backfills_orphan_rows(): void
+    {
+        // Two orphan rows persisted by the webhook flow before any user existed,
+        // both keyed by the same Vatly customer id.
+        Subscription::create([
+            'vatly_id' => 'sub_anon',
+            'customer_id' => 'cus_anon',
+            'type' => 'default',
+            'plan_id' => 'plan_basic',
+            'name' => 'Basic',
+            'quantity' => 1,
+        ]);
+        Order::create([
+            'vatly_id' => 'order_anon',
+            'customer_id' => 'cus_anon',
+            'status' => 'paid',
+            'total' => 9900,
+            'currency' => 'EUR',
+        ]);
+
+        // Unrelated row should not be touched.
+        Order::create([
+            'vatly_id' => 'order_other',
+            'customer_id' => 'cus_other',
+            'status' => 'paid',
+            'total' => 100,
+            'currency' => 'EUR',
+        ]);
+
+        $user = User::factory()->create(['vatly_id' => null]);
+
+        $claimed = $user->claimVatlyCustomer('cus_anon');
+
+        $this->assertSame(2, $claimed);
+        $this->assertSame('cus_anon', $user->fresh()->vatly_id);
+
+        $sub = Subscription::where('vatly_id', 'sub_anon')->first();
+        $this->assertSame($user->id, $sub->owner_id);
+        $this->assertSame($user->getMorphClass(), $sub->owner_type);
+
+        $order = Order::where('vatly_id', 'order_anon')->first();
+        $this->assertSame($user->id, $order->owner_id);
+
+        $unrelated = Order::where('vatly_id', 'order_other')->first();
+        $this->assertNull($unrelated->owner_id);
+    }
+
+    public function test_claim_vatly_customer_returns_zero_when_no_orphan_rows_exist(): void
+    {
+        $user = User::factory()->create(['vatly_id' => null]);
+
+        $claimed = $user->claimVatlyCustomer('cus_unknown');
+
+        $this->assertSame(0, $claimed);
+        $this->assertSame('cus_unknown', $user->fresh()->vatly_id);
+    }
 }
