@@ -121,7 +121,7 @@ $user = User::findBillable('customer_xyz');             // ?User
 $user = User::findBillableOrFail('customer_xyz');       // User
 ```
 
-`$user->subscription()` returns a `Vatly\Fluent\Subscription` — a thin wrapper around the local `Subscription` Eloquent model with the API-driven operations on it. The Eloquent model itself also exposes the same operation methods (`cancel`, `swap`, `resume`, `updateBilling`), so `$user->subscriptions->first()->cancel()` works the same way. Analogously, `$user->order('order_abc')` returns a `Vatly\Fluent\Order` wrapping the local `Order` Eloquent model.
+`$user->subscription()` returns a `Vatly\Fluent\SubscriptionHandle` — a thin wrapper around the local `Subscription` Eloquent model with the API-driven operations on it. The Eloquent model itself also exposes the same operation methods (`cancel`, `swap`, `resume`, `updateBilling`), so `$user->subscriptions->first()->cancel()` works the same way. Analogously, `$user->order('order_abc')` returns a `Vatly\Fluent\OrderHandle` wrapping the local `Order` Eloquent model.
 
 See [docs/Subscriptions.md](docs/Subscriptions.md) and [docs/Checkouts.md](docs/Checkouts.md) for the full surface.
 
@@ -190,7 +190,7 @@ See [`tests/Http/Controllers/VatlyInboundWebhookControllerTest.php`](tests/Http/
 
 ## Under the hood
 
-This package is a thin Laravel driver on top of [`vatly/vatly-fluent-php`](https://github.com/Vatly/vatly-fluent-php), which holds the contracts, composition root (`Vatly`), webhook pipeline, domain events, and the framework-agnostic operation wrappers (`Vatly\Fluent\Subscription`, `Vatly\Fluent\Order`). The Laravel side supplies:
+This package is a thin Laravel driver on top of [`vatly/vatly-fluent-php`](https://github.com/Vatly/vatly-fluent-php), which holds the contracts, composition root (`Vatly`), webhook pipeline, domain events, and the framework-agnostic operation wrappers (`Vatly\Fluent\SubscriptionHandle`, `Vatly\Fluent\OrderHandle`). The Laravel side supplies:
 
 - Concrete Eloquent-backed impls of fluent's contracts (subscription / order / webhook-call repositories, customer-binding repository, models, config reader, event dispatcher)
 - The `Billable` trait with Cashier-style shortcuts and static finders

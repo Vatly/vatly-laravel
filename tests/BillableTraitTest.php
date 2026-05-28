@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Vatly\Fluent\Builders\CheckoutBuilder;
 use Vatly\Fluent\Builders\SubscriptionBuilder;
 use Vatly\Fluent\CustomerProfile;
-use Vatly\Fluent\Subscription as FluentSubscription;
+use Vatly\Fluent\SubscriptionHandle;
 use Vatly\Fluent\Vatly;
 use Vatly\Laravel\Models\Subscription;
 
@@ -90,7 +90,7 @@ class BillableTraitTest extends BaseTestCase
 
         $handle = $user->subscription();
 
-        $this->assertInstanceOf(FluentSubscription::class, $handle);
+        $this->assertInstanceOf(SubscriptionHandle::class, $handle);
         $this->assertSame('subscription_abc', $handle->getVatlyId());
         $this->assertSame('plan_basic', $handle->getPlanId());
         $this->assertTrue($handle->active());

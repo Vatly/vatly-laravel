@@ -9,9 +9,10 @@ use Vatly\API\Resources\Customer;
 use Vatly\Fluent\Builders\CheckoutBuilder;
 use Vatly\Fluent\Builders\SubscriptionBuilder;
 use Vatly\Fluent\CustomerProfile;
-use Vatly\Fluent\Subscription as FluentSubscription;
+use Vatly\Fluent\OrderHandle;
+use Vatly\Fluent\SubscriptionHandle;
 use Vatly\Fluent\Vatly;
-use Vatly\Laravel\Exceptions\NoVatlyCustomer;
+use Vatly\Laravel\Exceptions\NoVatlyCustomerException;
 use Vatly\Laravel\Models\Order;
 use Vatly\Laravel\Models\Subscription;
 
@@ -100,7 +101,7 @@ trait Billable
         return $subscription !== null && $subscription->isActive();
     }
 
-    public function subscription(string $type = Subscription::DEFAULT_TYPE): ?FluentSubscription
+    public function subscription(string $type = Subscription::DEFAULT_TYPE): ?SubscriptionHandle
     {
         $local = $this->subscriptions()
             ->where('type', $type)
@@ -114,7 +115,7 @@ trait Billable
         return app(Vatly::class)->checkoutBuilder($this->customerProfile());
     }
 
-    public function order(string $vatlyId): \Vatly\Fluent\Order
+    public function order(string $vatlyId): OrderHandle
     {
         $local = $this->orders()
             ->where('vatly_id', $vatlyId)
@@ -155,7 +156,7 @@ trait Billable
     public function asVatlyCustomer(): Customer
     {
         if (! $this->hasVatlyId()) {
-            throw NoVatlyCustomer::notYetCreated($this);
+            throw NoVatlyCustomerException::notYetCreated($this);
         }
 
         return app(Vatly::class)->customers()->findByVatlyCustomerId((string) $this->vatlyId());

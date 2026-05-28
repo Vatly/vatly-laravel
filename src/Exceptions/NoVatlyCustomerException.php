@@ -8,7 +8,7 @@ use ReflectionClass;
 use RuntimeException;
 use Vatly\Fluent\Exceptions\VatlyException;
 
-final class NoVatlyCustomer extends RuntimeException implements VatlyException
+final class NoVatlyCustomerException extends RuntimeException implements VatlyException
 {
     public static function notYetCreated(object $owner): self
     {

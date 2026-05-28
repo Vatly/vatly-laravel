@@ -87,7 +87,7 @@ class Order extends Model implements OrderInterface
      *
      * Cashier-style convenience: lets consumers iterate the orders relation
      * and call `invoiceUrl()` on each model directly. Internally delegates
-     * to the framework-agnostic {@see \Vatly\Fluent\Order::invoiceUrl()}.
+     * to the framework-agnostic {@see \Vatly\Fluent\OrderHandle::invoiceUrl()}.
      */
     public function invoiceUrl(): ?string
     {

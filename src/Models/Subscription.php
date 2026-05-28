@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Vatly\Fluent\Concerns\DerivesSubscriptionState;
 use Vatly\Fluent\Contracts\SubscriptionInterface;
-use Vatly\Fluent\Subscription as FluentSubscription;
+use Vatly\Fluent\SubscriptionHandle;
 use Vatly\Fluent\Vatly;
 
 /**
@@ -20,9 +20,9 @@ use Vatly\Fluent\Vatly;
  * predicates (isActive/isCancelled/isOnGracePeriod/isValid/isRecurring/
  * isEnded) come from the {@see DerivesSubscriptionState} trait. Operation
  * methods (cancel/cancelNow/swap/updateBilling/resume) delegate to a
- * fresh {@see FluentSubscription} so Cashier-style consumer code works:
+ * fresh {@see SubscriptionHandle} so Cashier-style consumer code works:
  *
- *     $user->subscription('default')->cancel();   // via Vatly\Fluent\Subscription
+ *     $user->subscription('default')->cancel();   // via Vatly\Fluent\SubscriptionHandle
  *     $user->subscriptions->first()->cancel();    // via this model
  *
  * @property string $type
@@ -123,7 +123,7 @@ class Subscription extends Model implements SubscriptionInterface
         return $this->isEnded();
     }
 
-    // --- Cashier-shape operation methods (delegate to Vatly\Fluent\Subscription) ---
+    // --- Cashier-shape operation methods (delegate to Vatly\Fluent\SubscriptionHandle) ---
 
     /**
      * Cancel the subscription at Vatly.
@@ -190,7 +190,7 @@ class Subscription extends Model implements SubscriptionInterface
     /**
      * Build a fresh fluent Subscription wrapping this model.
      */
-    private function handle(): FluentSubscription
+    private function handle(): SubscriptionHandle
     {
         return app(Vatly::class)->subscription($this);
     }
