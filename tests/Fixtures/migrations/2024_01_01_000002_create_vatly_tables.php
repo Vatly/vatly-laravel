@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('vatly_subscriptions', function (Blueprint $table) {
             $table->id();
-            $table->morphs('owner');
+            $table->nullableMorphs('owner');
             $table->string('type');
             $table->string('plan_id');
             $table->string('vatly_id')->unique();
@@ -18,12 +18,13 @@ return new class extends Migration
             $table->integer('quantity')->nullable();
             $table->timestamp('trial_ends_at')->nullable();
             $table->timestamp('ends_at')->nullable();
+            $table->string('customer_id')->nullable()->index();
             $table->timestamps();
         });
 
         Schema::create('vatly_orders', function (Blueprint $table) {
             $table->id();
-            $table->morphs('owner');
+            $table->nullableMorphs('owner');
             $table->string('vatly_id')->unique();
             $table->string('status');
             $table->integer('total');

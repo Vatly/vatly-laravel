@@ -6,14 +6,15 @@ namespace Vatly\Laravel\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
-use Vatly\Fluent\Contracts\BillableInterface;
 use Vatly\Fluent\Contracts\OrderInterface;
+use Vatly\Fluent\OrderHandle;
 use Vatly\Fluent\Vatly;
 
 /**
  * @property string $vatly_id
- * @property string $owner_type
- * @property int $owner_id
+ * @property string|null $owner_type
+ * @property int|null $owner_id
+ * @property string|null $customer_id The Vatly customer id (cus_…), populated even for anonymous flows.
  * @property string $status
  * @property int $total
  * @property int|null $subtotal
@@ -78,11 +79,6 @@ class Order extends Model implements OrderInterface
         return $this->payment_method;
     }
 
-    public function getOwner(): BillableInterface
-    {
-        return $this->owner;
-    }
-
     public function isPaid(): bool
     {
         return $this->status === 'paid';
@@ -91,12 +87,12 @@ class Order extends Model implements OrderInterface
     /**
      * Get the hosted invoice URL for this order.
      *
-     * Cashier-style convenience: lets consumers iterate the orders relation
-     * and call `invoiceUrl()` on each model directly. Internally delegates
-     * to the framework-agnostic {@see \Vatly\Fluent\OrderHandle::invoiceUrl()}.
+     * Lets consumers iterate the orders relation and call `invoiceUrl()`
+     * on each model directly. Internally delegates to the framework-agnostic
+     * {@see OrderHandle::invoiceUrl()}.
      */
     public function invoiceUrl(): ?string
     {
-        return app(Vatly::class)->orderHandle($this)->invoiceUrl();
+        return app(Vatly::class)->order($this)->invoiceUrl();
     }
 }

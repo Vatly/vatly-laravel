@@ -9,7 +9,6 @@ use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Vatly\Fluent\Concerns\DerivesSubscriptionState;
-use Vatly\Fluent\Contracts\BillableInterface;
 use Vatly\Fluent\Contracts\SubscriptionInterface;
 use Vatly\Fluent\SubscriptionHandle;
 use Vatly\Fluent\Vatly;
@@ -21,17 +20,17 @@ use Vatly\Fluent\Vatly;
  * predicates (isActive/isCancelled/isOnGracePeriod/isValid/isRecurring/
  * isEnded) come from the {@see DerivesSubscriptionState} trait. Operation
  * methods (cancel/cancelNow/swap/updateBilling/resume) delegate to a
- * fresh {@see SubscriptionHandle} so Cashier-style consumer code works:
+ * fresh {@see SubscriptionHandle} so this consumer code works:
  *
- *     $user->subscription('default')->cancel();   // via SubscriptionHandle
+ *     $user->subscription('default')->cancel();   // via Vatly\Fluent\SubscriptionHandle
  *     $user->subscriptions->first()->cancel();    // via this model
  *
- * @property BillableInterface $owner
  * @property string $type
  * @property string $plan_id
  * @property string $vatly_id
  * @property string $name
  * @property int $quantity
+ * @property string|null $customer_id The Vatly customer id (cus_…), populated even for anonymous flows.
  * @property Carbon|null $trial_ends_at
  * @property Carbon|null $ends_at
  *
@@ -93,12 +92,7 @@ class Subscription extends Model implements SubscriptionInterface
         return $this->ends_at;
     }
 
-    public function getOwner(): BillableInterface
-    {
-        return $this->owner;
-    }
-
-    // --- Cashier-shape predicate aliases ---
+    // --- Predicate aliases (active / canceled / onGracePeriod / valid / recurring / ended) ---
 
     public function active(): bool
     {
@@ -130,7 +124,7 @@ class Subscription extends Model implements SubscriptionInterface
         return $this->isEnded();
     }
 
-    // --- Cashier-shape operation methods (delegate to SubscriptionHandle) ---
+    // --- Operation methods (delegate to Vatly\Fluent\SubscriptionHandle) ---
 
     /**
      * Cancel the subscription at Vatly.
@@ -153,7 +147,7 @@ class Subscription extends Model implements SubscriptionInterface
     /**
      * Swap to a different plan.
      *
-     * @param array<string, mixed> $options
+     * @param  array<string, mixed>  $options
      */
     public function swap(string $planId, array $options = []): self
     {
@@ -165,7 +159,7 @@ class Subscription extends Model implements SubscriptionInterface
     /**
      * Swap to a different plan and invoice immediately.
      *
-     * @param array<string, mixed> $options
+     * @param  array<string, mixed>  $options
      */
     public function swapAndInvoice(string $planId, array $options = []): self
     {
@@ -177,7 +171,7 @@ class Subscription extends Model implements SubscriptionInterface
     /**
      * Create a signed URL where the customer can update billing details.
      *
-     * @param array<string, mixed> $prefillData
+     * @param  array<string, mixed>  $prefillData
      */
     public function updateBilling(array $prefillData = []): string
     {
@@ -195,10 +189,10 @@ class Subscription extends Model implements SubscriptionInterface
     }
 
     /**
-     * Build a fresh SubscriptionHandle wrapping this model.
+     * Build a fresh fluent Subscription wrapping this model.
      */
     private function handle(): SubscriptionHandle
     {
-        return app(Vatly::class)->subscriptionHandle($this);
+        return app(Vatly::class)->subscription($this);
     }
 }

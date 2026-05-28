@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Vatly\Laravel;
 
+use App\Models\User;
 use Vatly\Fluent\Concerns\DerivesTestmodeFromApiKey;
 use Vatly\Fluent\Contracts\ConfigurationInterface;
 
@@ -49,6 +50,6 @@ class VatlyConfig implements ConfigurationInterface
      */
     public function getBillableModel(): string
     {
-        return config('vatly.billable_model', \App\Models\User::class);
+        return config('vatly.billable_model', User::class);
     }
 }

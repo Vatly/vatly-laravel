@@ -13,13 +13,14 @@ return new class extends Migration
     {
         Schema::create('vatly_subscriptions', function (Blueprint $table) {
             $table->id();
-            $table->morphs('owner');
+            $table->nullableMorphs('owner');
             $table->string('type');
             $table->string('plan_id');
             $table->string('vatly_id')->unique();
             $table->string('name');
             $table->integer('quantity')->nullable();
             $table->timestamp('ends_at')->nullable();
+            $table->string('customer_id')->nullable()->index();
             $table->timestamps();
         });
     }

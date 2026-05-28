@@ -10,7 +10,7 @@ use Vatly\Laravel\Tests\BaseTestCase;
 
 class BillableColumnsMigrationTest extends BaseTestCase
 {
-    private const STUB_PATH = __DIR__ . '/../../../database/migrations/create_vatly_billable_columns.php.stub';
+    private const STUB_PATH = __DIR__.'/../../../database/migrations/create_vatly_billable_columns.php.stub';
 
     protected function defineDatabaseMigrations(): void
     {

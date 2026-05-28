@@ -4,19 +4,17 @@ declare(strict_types=1);
 
 namespace Vatly\Laravel\Repositories;
 
-use Vatly\Fluent\Contracts\BillableInterface;
-use Vatly\Fluent\Contracts\CustomerRepositoryInterface;
 use Vatly\Fluent\Contracts\OrderInterface;
 use Vatly\Fluent\Contracts\OrderRepositoryInterface;
 use Vatly\Fluent\Data\StoreOrderData;
 use Vatly\Fluent\Data\UpdateOrderData;
-use Vatly\Fluent\Exceptions\InvalidOrderException;
 use Vatly\Laravel\Models\Order;
+use Vatly\Laravel\VatlyConfig;
 
 class EloquentOrderRepository implements OrderRepositoryInterface
 {
     public function __construct(
-        private readonly CustomerRepositoryInterface $customers,
+        private readonly VatlyConfig $config,
     ) {
         //
     }
@@ -26,42 +24,11 @@ class EloquentOrderRepository implements OrderRepositoryInterface
         return Order::where('vatly_id', $vatlyId)->first();
     }
 
-    public function findForOwnerOrFail(BillableInterface $owner, string $vatlyId): OrderInterface
-    {
-        $order = Order::query()
-            ->where('owner_type', $owner->getMorphClass())
-            ->where('owner_id', $owner->getKey())
-            ->where('vatly_id', $vatlyId)
-            ->first();
-
-        if ($order === null) {
-            throw InvalidOrderException::notFound($vatlyId);
-        }
-
-        return $order;
-    }
-
-    /**
-     * @return OrderInterface[]
-     */
-    public function findAllByOwner(BillableInterface $owner): array
-    {
-        return Order::query()
-            ->where('owner_type', $owner->getMorphClass())
-            ->where('owner_id', $owner->getKey())
-            ->orderByDesc('created_at')
-            ->get()
-            ->all();
-    }
-
     public function store(StoreOrderData $data): OrderInterface
     {
-        $owner = $this->customers->findByVatlyIdOrFail($data->customerId);
-
-        return Order::create([
+        $attrs = [
             'vatly_id' => $data->vatlyId,
-            'owner_type' => $owner->getMorphClass(),
-            'owner_id' => $owner->getKey(),
+            'customer_id' => $data->customerId,
             'status' => $data->status,
             'total' => $data->total,
             'subtotal' => $data->subtotal,
@@ -69,7 +36,15 @@ class EloquentOrderRepository implements OrderRepositoryInterface
             'currency' => $data->currency,
             'invoice_number' => $data->invoiceNumber,
             'payment_method' => $data->paymentMethod,
-        ]);
+        ];
+
+        if ($data->hostCustomerId !== null) {
+            $model = $this->config->getBillableModel();
+            $attrs['owner_type'] = (new $model)->getMorphClass();
+            $attrs['owner_id'] = $data->hostCustomerId;
+        }
+
+        return Order::create($attrs);
     }
 
     public function update(OrderInterface $order, UpdateOrderData $data): OrderInterface

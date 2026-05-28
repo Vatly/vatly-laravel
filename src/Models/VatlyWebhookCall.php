@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $entity_type
  * @property string $entity_id
  * @property bool $testmode
- * @property \Carbon\Carbon $vatly_created_at
+ * @property Carbon $vatly_created_at
  * @property ?string $vatly_customer_id
  * @property array<string, mixed> $object
  */

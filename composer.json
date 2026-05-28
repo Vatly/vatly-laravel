@@ -21,10 +21,11 @@
         "illuminate/http": "^12.0|^13.0",
         "illuminate/routing": "^12.0|^13.0",
         "illuminate/support": "^12.0|^13.0",
-        "vatly/vatly-fluent-php": "^0.7.0-alpha.1"
+        "vatly/vatly-fluent-php": "^0.8.0-alpha.1"
     },
     "require-dev": {
         "larastan/larastan": "^3.9",
+        "laravel/pint": "^1.29",
         "mockery/mockery": "^1.6",
         "orchestra/testbench": "^10.0|^11.0",
         "phpunit/phpunit": "^11.0|^12.0"
