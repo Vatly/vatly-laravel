@@ -158,7 +158,7 @@ trait Billable
             throw NoVatlyCustomer::notYetCreated($this);
         }
 
-        return app(Vatly::class)->customers()->findByVatlyId((string) $this->vatlyId());
+        return app(Vatly::class)->customers()->findByVatlyCustomerId((string) $this->vatlyId());
     }
 
     /**
