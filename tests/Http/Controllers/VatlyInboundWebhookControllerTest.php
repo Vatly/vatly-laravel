@@ -6,6 +6,8 @@ namespace Vatly\Laravel\Tests\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
+use Vatly\Fluent\Events\PaymentFailed;
 use Vatly\Laravel\Models\Order;
 use Vatly\Laravel\Models\Subscription;
 use Vatly\Laravel\Tests\BaseTestCase;
@@ -176,6 +178,76 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         $this->assertSame(868, $order->tax_summary[0]['amount']);
         $this->assertSame('USD', $order->tax_summary[0]['currency']);
         $this->assertSame($user->id, $order->owner_id);
+    }
+
+    public function test_it_stores_an_order_when_a_payment_fails_from_webhook(): void
+    {
+        $user = User::factory()->create(['vatly_id' => 'customer_abc']);
+
+        $apiOrder = $this->buildApiOrder([
+            'id' => 'order_failed_1',
+            'customerId' => 'customer_abc',
+            'totalValue' => '99.00',
+            'subtotalValue' => '81.82',
+            'currency' => 'EUR',
+            'invoiceNumber' => 'INV-009',
+            'paymentMethod' => 'card',
+            'taxRates' => [
+                ['name' => 'VAT', 'percentage' => 21.0, 'taxablePercentage' => 100.0, 'amount' => '17.18'],
+            ],
+        ]);
+        // The reaction mirrors the upstream status verbatim — not a synthetic "failed".
+        $apiOrder->status = 'pending';
+        $this->fakeGetOrder($apiOrder);
+
+        $response = $this->postWebhookEvent('payment.failed', 'order_failed_1', 'order', [
+            'customerId' => 'customer_abc',
+            'total' => ['currency' => 'EUR', 'value' => '99.00'],
+            'invoiceNumber' => 'INV-009',
+            'paymentMethod' => 'card',
+        ]);
+
+        $response->assertStatus(201);
+        $this->assertDatabaseHas('vatly_orders', [
+            'vatly_id' => 'order_failed_1',
+            'status' => 'pending',
+            'total' => 9900,
+            'currency' => 'EUR',
+            'owner_id' => $user->id,
+        ]);
+    }
+
+    public function test_it_dispatches_the_payment_failed_event_from_webhook(): void
+    {
+        Event::fake([PaymentFailed::class]);
+
+        User::factory()->create(['vatly_id' => 'customer_abc']);
+
+        $apiOrder = $this->buildApiOrder([
+            'id' => 'order_failed_2',
+            'customerId' => 'customer_abc',
+            'totalValue' => '99.00',
+            'subtotalValue' => '81.82',
+            'currency' => 'EUR',
+            'invoiceNumber' => null,
+            'paymentMethod' => null,
+            'taxRates' => [
+                ['name' => 'VAT', 'percentage' => 21.0, 'taxablePercentage' => 100.0, 'amount' => '17.18'],
+            ],
+        ]);
+        $apiOrder->status = 'pending';
+        $this->fakeGetOrder($apiOrder);
+
+        $this->postWebhookEvent('payment.failed', 'order_failed_2', 'order', [
+            'customerId' => 'customer_abc',
+            'total' => ['currency' => 'EUR', 'value' => '99.00'],
+        ])->assertStatus(201);
+
+        Event::assertDispatched(
+            PaymentFailed::class,
+            fn (PaymentFailed $event): bool => $event->orderId === 'order_failed_2'
+                && $event->customerId === 'customer_abc',
+        );
     }
 
     public function test_it_cancels_a_subscription_immediately_from_webhook(): void
