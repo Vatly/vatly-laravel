@@ -139,8 +139,8 @@ Event::listen(OrderPaid::class, function (OrderPaid $event) {
 
 Events available:
 
-- `Vatly\Fluent\Events\WebhookReceived`
 - `Vatly\Fluent\Events\OrderPaid` — carries `total`, `subtotal`, `taxSummary` (full per-rate breakdown), `currency`, `invoiceNumber`, `paymentMethod`. Materialize local invoices without an extra API call.
+- `Vatly\Fluent\Events\PaymentFailed` — same enriched order shape as `OrderPaid`; typically the start of dunning.
 - `Vatly\Fluent\Events\SubscriptionStarted`
 - `Vatly\Fluent\Events\SubscriptionCanceledImmediately`
 - `Vatly\Fluent\Events\SubscriptionCanceledWithGracePeriod`
