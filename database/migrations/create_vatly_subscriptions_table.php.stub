@@ -21,6 +21,10 @@ return new class extends Migration
             $table->integer('quantity')->nullable();
             $table->timestamp('ends_at')->nullable();
             $table->string('customer_id')->nullable()->index();
+            // Mandate summary from Vatly\API\Types\Mandate — persisted so portal
+            // renders avoid a per-request GetSubscription roundtrip.
+            $table->string('mandate_method')->nullable();
+            $table->string('mandate_masked_identifier')->nullable();
             $table->timestamps();
         });
     }

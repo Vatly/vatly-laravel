@@ -34,6 +34,8 @@ class EloquentSubscriptionRepository implements SubscriptionRepositoryInterface
             'plan_id' => $data->planId,
             'name' => $data->name,
             'quantity' => $data->quantity,
+            'mandate_method' => $data->mandateMethod,
+            'mandate_masked_identifier' => $data->mandateMaskedIdentifier,
         ];
 
         if ($data->hostCustomerId !== null) {
@@ -61,6 +63,12 @@ class EloquentSubscriptionRepository implements SubscriptionRepositoryInterface
                 $subscription->ends_at = Carbon::instance($data->endsAt);
             } elseif ($data->clearEndsAt) {
                 $subscription->ends_at = null;
+            }
+            if ($data->mandateMethod !== null) {
+                $subscription->mandate_method = $data->mandateMethod;
+            }
+            if ($data->mandateMaskedIdentifier !== null) {
+                $subscription->mandate_masked_identifier = $data->mandateMaskedIdentifier;
             }
             $subscription->save();
         }

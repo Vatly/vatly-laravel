@@ -65,6 +65,14 @@ class AnonymousCheckoutFlowTest extends BaseTestCase
 
         $this->assertDatabaseMissing('users', ['vatly_id' => $anonymousCustomerId]);
 
+        $this->fakeGetSubscription($this->buildApiSubscription([
+            'id' => 'sub_anon_1',
+            'customerId' => $anonymousCustomerId,
+            'subscriptionPlanId' => 'plan_basic',
+            'name' => 'Basic',
+            'quantity' => 1,
+        ]));
+
         $this->postWebhookEvent('subscription.started', 'sub_anon_1', 'subscription', [
             'customerId' => $anonymousCustomerId,
             'subscriptionPlanId' => 'plan_basic',
@@ -137,6 +145,23 @@ class AnonymousCheckoutFlowTest extends BaseTestCase
     public function test_claim_does_not_touch_purchases_belonging_to_a_different_anonymous_customer(): void
     {
         // Two distinct anonymous customers each made a purchase.
+        $this->fakeGetSubscriptions([
+            'sub_alice' => $this->buildApiSubscription([
+                'id' => 'sub_alice',
+                'customerId' => 'cus_alice',
+                'subscriptionPlanId' => 'plan_basic',
+                'name' => 'Basic',
+                'quantity' => 1,
+            ]),
+            'sub_bob' => $this->buildApiSubscription([
+                'id' => 'sub_bob',
+                'customerId' => 'cus_bob',
+                'subscriptionPlanId' => 'plan_basic',
+                'name' => 'Basic',
+                'quantity' => 1,
+            ]),
+        ]);
+
         $this->postWebhookEvent('subscription.started', 'sub_alice', 'subscription', [
             'customerId' => 'cus_alice',
             'subscriptionPlanId' => 'plan_basic',
@@ -183,6 +208,14 @@ class AnonymousCheckoutFlowTest extends BaseTestCase
             'taxRates' => [
                 ['name' => 'VAT', 'percentage' => 21.0, 'taxablePercentage' => 100.0, 'amount' => '3.30'],
             ],
+        ]));
+
+        $this->fakeGetSubscription($this->buildApiSubscription([
+            'id' => 'sub_first',
+            'customerId' => 'cus_charlie',
+            'subscriptionPlanId' => 'plan_basic',
+            'name' => 'Basic',
+            'quantity' => 1,
         ]));
 
         // Anonymous purchase lands first.

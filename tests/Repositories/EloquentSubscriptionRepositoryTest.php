@@ -6,6 +6,7 @@ namespace Vatly\Laravel\Tests\Repositories;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Vatly\Fluent\Data\StoreSubscriptionData;
 use Vatly\Fluent\Data\UpdateSubscriptionData;
 use Vatly\Laravel\Models\Subscription;
 use Vatly\Laravel\Repositories\EloquentSubscriptionRepository;
@@ -90,6 +91,77 @@ class EloquentSubscriptionRepositoryTest extends BaseTestCase
             $subscription->fresh()->ends_at->format('Y-m-d H:i:s'),
         );
         $this->assertSame('plan_premium', $subscription->fresh()->plan_id);
+    }
+
+    public function test_store_persists_mandate_fields_when_present(): void
+    {
+        $stored = $this->repo->store(new StoreSubscriptionData(
+            vatlyId: 'subscription_with_mandate',
+            customerId: 'cus_xyz',
+            type: 'default',
+            planId: 'plan_basic',
+            name: 'Basic',
+            quantity: 1,
+            mandateMethod: 'card',
+            mandateMaskedIdentifier: '4242',
+        ));
+
+        $this->assertSame('card', $stored->getMandateMethod());
+        $this->assertSame('4242', $stored->getMandateMaskedIdentifier());
+        $this->assertDatabaseHas('vatly_subscriptions', [
+            'vatly_id' => 'subscription_with_mandate',
+            'mandate_method' => 'card',
+            'mandate_masked_identifier' => '4242',
+        ]);
+    }
+
+    public function test_store_leaves_mandate_null_when_not_supplied(): void
+    {
+        $stored = $this->repo->store(new StoreSubscriptionData(
+            vatlyId: 'subscription_no_mandate',
+            customerId: 'cus_xyz',
+            type: 'default',
+            planId: 'plan_basic',
+            name: 'Basic',
+            quantity: 1,
+        ));
+
+        $this->assertNull($stored->getMandateMethod());
+        $this->assertNull($stored->getMandateMaskedIdentifier());
+    }
+
+    public function test_update_writes_mandate_fields_when_present(): void
+    {
+        $subscription = $this->makeSubscription([
+            'mandate_method' => 'card',
+            'mandate_masked_identifier' => '4242',
+        ]);
+
+        $this->repo->update($subscription, new UpdateSubscriptionData(
+            mandateMethod: 'sepa_debit',
+            mandateMaskedIdentifier: 'NL91****4300',
+        ));
+
+        $fresh = $subscription->fresh();
+        $this->assertSame('sepa_debit', $fresh->mandate_method);
+        $this->assertSame('NL91****4300', $fresh->mandate_masked_identifier);
+    }
+
+    public function test_update_leaves_existing_mandate_alone_when_data_is_null(): void
+    {
+        $subscription = $this->makeSubscription([
+            'mandate_method' => 'card',
+            'mandate_masked_identifier' => '4242',
+        ]);
+
+        $this->repo->update($subscription, new UpdateSubscriptionData(
+            planId: 'plan_premium',
+        ));
+
+        $fresh = $subscription->fresh();
+        $this->assertSame('card', $fresh->mandate_method);
+        $this->assertSame('4242', $fresh->mandate_masked_identifier);
+        $this->assertSame('plan_premium', $fresh->plan_id);
     }
 
     /**
