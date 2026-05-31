@@ -6,6 +6,7 @@ namespace Vatly\Laravel\Tests\Repositories;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Vatly\API\Types\Mandate;
 use Vatly\Fluent\Data\StoreSubscriptionData;
 use Vatly\Fluent\Data\UpdateSubscriptionData;
 use Vatly\Laravel\Models\Subscription;
@@ -102,8 +103,7 @@ class EloquentSubscriptionRepositoryTest extends BaseTestCase
             planId: 'plan_basic',
             name: 'Basic',
             quantity: 1,
-            mandateMethod: 'card',
-            mandateMaskedIdentifier: '4242',
+            mandate: new Mandate('card', '4242'),
         ));
 
         $this->assertSame('card', $stored->getMandateMethod());
@@ -138,13 +138,32 @@ class EloquentSubscriptionRepositoryTest extends BaseTestCase
         ]);
 
         $this->repo->update($subscription, new UpdateSubscriptionData(
-            mandateMethod: 'sepa_debit',
-            mandateMaskedIdentifier: 'NL91****4300',
+            mandate: new Mandate('sepa_debit', 'NL91****4300'),
         ));
 
         $fresh = $subscription->fresh();
         $this->assertSame('sepa_debit', $fresh->mandate_method);
         $this->assertSame('NL91****4300', $fresh->mandate_masked_identifier);
+    }
+
+    public function test_update_atomically_replaces_card_with_paypal_clearing_stale_last4(): void
+    {
+        // Regression: switching to a mandate type without an identifier
+        // (paypal) used to leave the old card's last4 stored alongside
+        // method='paypal'. Now the Mandate object is atomic, so both
+        // columns get rewritten together.
+        $subscription = $this->makeSubscription([
+            'mandate_method' => 'card',
+            'mandate_masked_identifier' => '4242',
+        ]);
+
+        $this->repo->update($subscription, new UpdateSubscriptionData(
+            mandate: new Mandate('paypal', null),
+        ));
+
+        $fresh = $subscription->fresh();
+        $this->assertSame('paypal', $fresh->mandate_method);
+        $this->assertNull($fresh->mandate_masked_identifier);
     }
 
     public function test_update_leaves_existing_mandate_alone_when_data_is_null(): void
@@ -190,8 +209,7 @@ class EloquentSubscriptionRepositoryTest extends BaseTestCase
         ]);
 
         $this->repo->update($subscription, new UpdateSubscriptionData(
-            mandateMethod: 'sepa_debit',
-            mandateMaskedIdentifier: 'NL91****4300',
+            mandate: new Mandate('sepa_debit', 'NL91****4300'),
             clearMandate: true,
         ));
 
