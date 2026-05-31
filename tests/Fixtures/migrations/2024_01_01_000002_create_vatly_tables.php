@@ -19,6 +19,8 @@ return new class extends Migration
             $table->timestamp('trial_ends_at')->nullable();
             $table->timestamp('ends_at')->nullable();
             $table->string('customer_id')->nullable()->index();
+            $table->string('mandate_method')->nullable();
+            $table->string('mandate_masked_identifier')->nullable();
             $table->timestamps();
         });
 

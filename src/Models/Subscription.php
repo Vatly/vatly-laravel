@@ -31,6 +31,8 @@ use Vatly\Fluent\Vatly;
  * @property string $name
  * @property int $quantity
  * @property string|null $customer_id The Vatly customer id (cus_…), populated even for anonymous flows.
+ * @property string|null $mandate_method Normalized payment method category (card, sepa_debit, paypal, bacs_debit).
+ * @property string|null $mandate_masked_identifier Customer-facing identifier — card last 4, masked IBAN, etc.
  * @property Carbon|null $trial_ends_at
  * @property Carbon|null $ends_at
  *
@@ -90,6 +92,16 @@ class Subscription extends Model implements SubscriptionInterface
     public function getEndsAt(): ?DateTimeInterface
     {
         return $this->ends_at;
+    }
+
+    public function getMandateMethod(): ?string
+    {
+        return $this->mandate_method;
+    }
+
+    public function getMandateMaskedIdentifier(): ?string
+    {
+        return $this->mandate_masked_identifier;
     }
 
     // --- Predicate aliases (active / canceled / onGracePeriod / valid / recurring / ended) ---

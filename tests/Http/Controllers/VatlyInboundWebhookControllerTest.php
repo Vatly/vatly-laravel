@@ -7,6 +7,7 @@ namespace Vatly\Laravel\Tests\Http\Controllers;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Vatly\API\Types\Mandate;
 use Vatly\Fluent\Events\PaymentFailed;
 use Vatly\Laravel\Models\Order;
 use Vatly\Laravel\Models\Subscription;
@@ -28,6 +29,14 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
     public function test_it_returns_201_for_a_valid_signed_webhook(): void
     {
         User::factory()->create(['vatly_id' => 'customer_foo']);
+
+        $this->fakeGetSubscription($this->buildApiSubscription([
+            'id' => 'sub_123',
+            'customerId' => 'customer_foo',
+            'subscriptionPlanId' => 'plan_foo',
+            'name' => 'Test Plan',
+            'quantity' => 1,
+        ]));
 
         $response = $this->postWebhookEvent('subscription.started', 'sub_123', 'subscription', [
             'customerId' => 'customer_foo',
@@ -98,6 +107,15 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
     {
         $user = User::factory()->create(['vatly_id' => 'customer_abc']);
 
+        $this->fakeGetSubscription($this->buildApiSubscription([
+            'id' => 'sub_999',
+            'customerId' => 'customer_abc',
+            'subscriptionPlanId' => 'plan_premium',
+            'name' => 'Premium Plan',
+            'quantity' => 1,
+            'mandate' => new Mandate('card', '4242'),
+        ]));
+
         $response = $this->postWebhookEvent('subscription.started', 'sub_999', 'subscription', [
             'customerId' => 'customer_abc',
             'subscriptionPlanId' => 'plan_premium',
@@ -111,6 +129,8 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
             'plan_id' => 'plan_premium',
             'name' => 'Premium Plan',
             'owner_id' => $user->id,
+            'mandate_method' => 'card',
+            'mandate_masked_identifier' => '4242',
         ]);
     }
 

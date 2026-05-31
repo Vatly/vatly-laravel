@@ -8,10 +8,13 @@ use Illuminate\Testing\TestResponse;
 use Mockery;
 use ReflectionClass;
 use Vatly\API\Resources\Order as ApiOrder;
+use Vatly\API\Resources\Subscription as ApiSubscription;
+use Vatly\API\Types\Mandate;
 use Vatly\API\Types\Money;
 use Vatly\API\Types\TaxSummaryCollection;
 use Vatly\API\VatlyApiClient;
 use Vatly\Fluent\Actions\GetOrder;
+use Vatly\Fluent\Actions\GetSubscription;
 use Vatly\Fluent\Vatly;
 use Vatly\Fluent\Webhooks\WebhookProcessor;
 
@@ -98,6 +101,78 @@ trait PostsVatlyWebhooks
         $this->writeVatlyPrivate($vatly, 'webhookProcessor', null);
 
         $this->app->forgetInstance(WebhookProcessor::class);
+    }
+
+    /**
+     * Replace the cached `GetSubscription` action on the composition root
+     * so the `subscription.started` webhook flow doesn't need a real API
+     * call. WebhookEventFactory enriches the event via this action to pull
+     * the mandate summary into the dispatched event.
+     *
+     * Returns the same subscription regardless of which Vatly id is asked
+     * for. For tests that need different subscriptions per id, use
+     * {@see self::fakeGetSubscriptions()}.
+     */
+    protected function fakeGetSubscription(ApiSubscription $subscription): void
+    {
+        $this->fakeGetSubscriptions([
+            $subscription->id => $subscription,
+        ], strict: false);
+    }
+
+    /**
+     * Replace the cached `GetSubscription` action with a fake that returns
+     * a different `ApiSubscription` per Vatly subscription id.
+     *
+     * @param  array<string, ApiSubscription>  $subscriptions  keyed by Vatly subscription id
+     * @param  bool  $strict  when true, asking for an id not in the map throws.
+     */
+    protected function fakeGetSubscriptions(array $subscriptions, bool $strict = true): void
+    {
+        $action = Mockery::mock(GetSubscription::class);
+        $action->shouldReceive('execute')->andReturnUsing(function (string $id) use ($subscriptions, $strict) {
+            if (isset($subscriptions[$id])) {
+                return $subscriptions[$id];
+            }
+            if ($strict) {
+                throw new \RuntimeException("No fake ApiSubscription registered for id '{$id}'.");
+            }
+
+            return reset($subscriptions);
+        });
+
+        $vatly = $this->app->make(Vatly::class);
+
+        $this->writeVatlyPrivate($vatly, 'getSubscription', $action);
+        $this->writeVatlyPrivate($vatly, 'webhookEventFactory', null);
+        $this->writeVatlyPrivate($vatly, 'webhookProcessor', null);
+
+        $this->app->forgetInstance(WebhookProcessor::class);
+    }
+
+    /**
+     * Build a minimal ApiSubscription for `fakeGetSubscription()` callers.
+     *
+     * @param  array{
+     *   id: string,
+     *   customerId: ?string,
+     *   subscriptionPlanId: string,
+     *   name: string,
+     *   quantity: int,
+     *   mandate?: ?Mandate,
+     * }  $data
+     */
+    protected function buildApiSubscription(array $data): ApiSubscription
+    {
+        $subscription = new ApiSubscription(Mockery::mock(VatlyApiClient::class));
+        $subscription->id = $data['id'];
+        $subscription->customerId = $data['customerId'] ?? null;
+        $subscription->subscriptionPlanId = $data['subscriptionPlanId'];
+        $subscription->name = $data['name'];
+        $subscription->quantity = $data['quantity'];
+        $subscription->mandate = $data['mandate'] ?? null;
+
+        return $subscription;
     }
 
     private function writeVatlyPrivate(object $target, string $property, mixed $value): void
