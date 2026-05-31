@@ -164,6 +164,42 @@ class EloquentSubscriptionRepositoryTest extends BaseTestCase
         $this->assertSame('plan_premium', $fresh->plan_id);
     }
 
+    public function test_update_with_clear_mandate_nulls_both_columns(): void
+    {
+        $subscription = $this->makeSubscription([
+            'mandate_method' => 'card',
+            'mandate_masked_identifier' => '4242',
+        ]);
+
+        $this->repo->update($subscription, new UpdateSubscriptionData(
+            clearMandate: true,
+        ));
+
+        $fresh = $subscription->fresh();
+        $this->assertNull($fresh->mandate_method);
+        $this->assertNull($fresh->mandate_masked_identifier);
+    }
+
+    public function test_update_with_clear_mandate_and_replacement_values_keeps_replacement(): void
+    {
+        // Matches the existing endsAt precedence: a non-null replacement
+        // wins over the clear flag.
+        $subscription = $this->makeSubscription([
+            'mandate_method' => 'card',
+            'mandate_masked_identifier' => '4242',
+        ]);
+
+        $this->repo->update($subscription, new UpdateSubscriptionData(
+            mandateMethod: 'sepa_debit',
+            mandateMaskedIdentifier: 'NL91****4300',
+            clearMandate: true,
+        ));
+
+        $fresh = $subscription->fresh();
+        $this->assertSame('sepa_debit', $fresh->mandate_method);
+        $this->assertSame('NL91****4300', $fresh->mandate_masked_identifier);
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */

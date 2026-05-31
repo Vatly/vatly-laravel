@@ -66,9 +66,13 @@ class EloquentSubscriptionRepository implements SubscriptionRepositoryInterface
             }
             if ($data->mandateMethod !== null) {
                 $subscription->mandate_method = $data->mandateMethod;
+            } elseif ($data->clearMandate) {
+                $subscription->mandate_method = null;
             }
             if ($data->mandateMaskedIdentifier !== null) {
                 $subscription->mandate_masked_identifier = $data->mandateMaskedIdentifier;
+            } elseif ($data->clearMandate) {
+                $subscription->mandate_masked_identifier = null;
             }
             $subscription->save();
         }
