@@ -93,6 +93,16 @@ $checkout = $user->checkout()->create(
     redirectUrlCanceled: 'https://example.com/canceled',
 );
 
+// Guest checkout: put {CHECKOUT_ID} in the return URL — Vatly fills it in,
+// and claimVatlyCustomerFromReturn() links the purchase on the way back.
+$user->checkout()->create(
+    items: [['id' => 'plan_premium', 'quantity' => 1]],
+    redirectUrlSuccess: route('vatly.return').'?checkout_id={CHECKOUT_ID}',
+    redirectUrlCanceled: 'https://example.com/billing',
+);
+// …on the return route (multi-tab safe; no session/cookie plumbing):
+$request->user()->claimVatlyCustomerFromReturn($request);   // see docs/Customers.md
+
 // Subscription state — Cashier-shape predicates
 $user->subscribed();                                    // bool, default type
 $user->subscribed('team');                              // bool, custom type
