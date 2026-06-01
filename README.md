@@ -153,12 +153,14 @@ Events available:
 - `Vatly\Fluent\Events\OrderCanceled` — the local order's status is mirrored to `canceled`.
 - `Vatly\Fluent\Events\OrderChargebackReceived` / `OrderChargebackReversed` — dispute signals carrying the affected `orderId` (no local row is mutated; react to suspend/reinstate access).
 - `Vatly\Fluent\Events\PaymentFailed` — same enriched order shape as `OrderPaid`; typically the start of dunning.
+- `Vatly\Fluent\Events\CheckoutPaid` / `CheckoutFailed` / `CheckoutCanceled` / `CheckoutExpired` — hosted-checkout lifecycle signals carrying `checkoutId`, nullable `customerId` / `orderId`, `status` and `metadata`. Dispatched straight from the payload (no enrichment GET, no local row); `CheckoutPaid` fires before `OrderPaid` so you can drive in-app receipt/analytics UI, while the others feed retry / cart-abandonment flows.
 - `Vatly\Fluent\Events\RefundCompleted` / `RefundFailed` / `RefundCanceled` — each with full `taxSummary`; persisted to `vatly_refunds` (see below).
 - `Vatly\Fluent\Events\SubscriptionStarted`
 - `Vatly\Fluent\Events\SubscriptionBillingUpdated` — the stored mandate (`mandate_method` / `mandate_masked_identifier`) is refreshed.
 - `Vatly\Fluent\Events\SubscriptionResumed` — the stored end date is cleared.
 - `Vatly\Fluent\Events\SubscriptionCanceledImmediately`
 - `Vatly\Fluent\Events\SubscriptionCanceledWithGracePeriod`
+- `Vatly\Fluent\Events\SubscriptionCancellationGracePeriodCompleted` — the grace period set at cancellation has elapsed; carries `customerId`, `subscriptionId`, `endsAt`. No local write (the cancellation already stamped `ends_at`) — listen to flip your own application-level "fully ended" state without polling.
 - `Vatly\Fluent\Events\LocalSubscriptionCreated`
 - `Vatly\Fluent\Events\UnsupportedWebhookReceived`
 

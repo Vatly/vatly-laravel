@@ -8,7 +8,9 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Vatly\API\Types\Mandate;
+use Vatly\Fluent\Events\CheckoutPaid;
 use Vatly\Fluent\Events\PaymentFailed;
+use Vatly\Fluent\Events\SubscriptionCancellationGracePeriodCompleted;
 use Vatly\Laravel\Models\Order;
 use Vatly\Laravel\Models\Refund;
 use Vatly\Laravel\Models\Subscription;
@@ -268,6 +270,48 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
             PaymentFailed::class,
             fn (PaymentFailed $event): bool => $event->orderId === 'order_failed_2'
                 && $event->customerId === 'customer_abc',
+        );
+    }
+
+    public function test_it_dispatches_the_checkout_paid_event_from_webhook(): void
+    {
+        Event::fake([CheckoutPaid::class]);
+
+        $this->postWebhookEvent('checkout.paid', 'checkout_abc123', 'checkout', [
+            'customerId' => 'customer_abc',
+            'orderId' => 'order_abc123',
+            'status' => 'paid',
+            'metadata' => ['cart' => 'cart_1'],
+        ])->assertStatus(201);
+
+        $this->assertDatabaseCount('vatly_webhook_calls', 1);
+
+        Event::assertDispatched(
+            CheckoutPaid::class,
+            fn (CheckoutPaid $event): bool => $event->checkoutId === 'checkout_abc123'
+                && $event->customerId === 'customer_abc'
+                && $event->orderId === 'order_abc123'
+                && $event->status === 'paid'
+                && $event->metadata === ['cart' => 'cart_1'],
+        );
+    }
+
+    public function test_it_dispatches_the_grace_period_completed_event_from_webhook(): void
+    {
+        Event::fake([SubscriptionCancellationGracePeriodCompleted::class]);
+
+        $this->postWebhookEvent('subscription.cancellation_grace_period_completed', 'sub_grace', 'subscription', [
+            'customerId' => 'customer_abc',
+            'endedAt' => '2026-01-01T00:00:00+00:00',
+        ])->assertStatus(201);
+
+        $this->assertDatabaseCount('vatly_webhook_calls', 1);
+
+        Event::assertDispatched(
+            SubscriptionCancellationGracePeriodCompleted::class,
+            fn (SubscriptionCancellationGracePeriodCompleted $event): bool => $event->subscriptionId === 'sub_grace'
+                && $event->customerId === 'customer_abc'
+                && $event->endsAt->format('Y-m-d') === '2026-01-01',
         );
     }
 
