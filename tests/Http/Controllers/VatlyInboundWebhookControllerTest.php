@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Event;
 use Vatly\API\Types\Mandate;
 use Vatly\Fluent\Events\PaymentFailed;
 use Vatly\Laravel\Models\Order;
+use Vatly\Laravel\Models\Refund;
 use Vatly\Laravel\Models\Subscription;
 use Vatly\Laravel\Tests\BaseTestCase;
 use Vatly\Laravel\Tests\TestHelpers\PostsVatlyWebhooks;
@@ -292,5 +293,42 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         $response->assertStatus(201);
         $subscription = Subscription::where('vatly_id', 'sub_cancel')->first();
         $this->assertTrue($subscription->isCancelled());
+    }
+
+    public function test_it_persists_a_refund_from_webhook(): void
+    {
+        $user = User::factory()->create(['vatly_id' => 'customer_abc']);
+
+        $this->fakeGetRefund($this->buildApiRefund([
+            'id' => 'refund_abc123',
+            'customerId' => 'customer_abc',
+            'originalOrderId' => 'order_abc123',
+            'status' => 'refunded',
+            'totalValue' => '99.00',
+            'subtotalValue' => '81.82',
+            'currency' => 'EUR',
+            'taxRates' => [
+                ['name' => 'VAT', 'percentage' => 21.0, 'taxablePercentage' => 100.0, 'amount' => '17.18'],
+            ],
+        ]));
+
+        $response = $this->postWebhookEvent('refund.completed', 'refund_abc123', 'refund', [
+            'customerId' => 'customer_abc',
+        ]);
+
+        $response->assertStatus(201);
+        $this->assertDatabaseHas('vatly_refunds', [
+            'vatly_id' => 'refund_abc123',
+            'original_order_id' => 'order_abc123',
+            'status' => 'refunded',
+            'total' => 9900,
+            'currency' => 'EUR',
+            'owner_id' => $user->id,
+        ]);
+
+        $refund = Refund::where('vatly_id', 'refund_abc123')->firstOrFail();
+        $this->assertSame(8182, $refund->subtotal);
+        $this->assertSame(1718, $refund->tax_summary[0]['amount']);
+        $this->assertTrue($refund->isCompleted());
     }
 }

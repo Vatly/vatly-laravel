@@ -8,12 +8,14 @@ use Illuminate\Testing\TestResponse;
 use Mockery;
 use ReflectionClass;
 use Vatly\API\Resources\Order as ApiOrder;
+use Vatly\API\Resources\Refund as ApiRefund;
 use Vatly\API\Resources\Subscription as ApiSubscription;
 use Vatly\API\Types\Mandate;
 use Vatly\API\Types\Money;
 use Vatly\API\Types\TaxSummaryCollection;
 use Vatly\API\VatlyApiClient;
 use Vatly\Fluent\Actions\GetOrder;
+use Vatly\Fluent\Actions\GetRefund;
 use Vatly\Fluent\Actions\GetSubscription;
 use Vatly\Fluent\Vatly;
 use Vatly\Fluent\Webhooks\WebhookProcessor;
@@ -113,6 +115,25 @@ trait PostsVatlyWebhooks
      * for. For tests that need different subscriptions per id, use
      * {@see self::fakeGetSubscriptions()}.
      */
+    /**
+     * Replace the cached `GetRefund` action on the composition root so the
+     * `refund.*` webhook flow doesn't need a real API call. The factory
+     * enriches refund events via this action to carry the full tax breakdown.
+     */
+    protected function fakeGetRefund(ApiRefund $refund): void
+    {
+        $action = Mockery::mock(GetRefund::class);
+        $action->shouldReceive('execute')->andReturn($refund);
+
+        $vatly = $this->app->make(Vatly::class);
+
+        $this->writeVatlyPrivate($vatly, 'getRefund', $action);
+        $this->writeVatlyPrivate($vatly, 'webhookEventFactory', null);
+        $this->writeVatlyPrivate($vatly, 'webhookProcessor', null);
+
+        $this->app->forgetInstance(WebhookProcessor::class);
+    }
+
     protected function fakeGetSubscription(ApiSubscription $subscription): void
     {
         $this->fakeGetSubscriptions([
@@ -217,5 +238,41 @@ trait PostsVatlyWebhooks
         ));
 
         return $order;
+    }
+
+    /**
+     * @param  array{
+     *   id: string,
+     *   customerId: string,
+     *   originalOrderId: string,
+     *   status: string,
+     *   totalValue: string,
+     *   subtotalValue: string,
+     *   currency: string,
+     *   taxRates: array<int, array{name: string, percentage: float, taxablePercentage: float, amount: string}>,
+     * }  $data
+     */
+    protected function buildApiRefund(array $data): ApiRefund
+    {
+        $refund = new ApiRefund(Mockery::mock(VatlyApiClient::class));
+        $refund->id = $data['id'];
+        $refund->customerId = $data['customerId'];
+        $refund->originalOrderId = $data['originalOrderId'];
+        $refund->status = $data['status'];
+        $refund->total = new Money($data['currency'], $data['totalValue']);
+        $refund->subtotal = new Money($data['currency'], $data['subtotalValue']);
+        $refund->taxSummary = new TaxSummaryCollection(array_map(
+            fn (array $rate) => [
+                'taxRate' => [
+                    'name' => $rate['name'],
+                    'percentage' => $rate['percentage'],
+                    'taxablePercentage' => $rate['taxablePercentage'],
+                ],
+                'amount' => ['currency' => $data['currency'], 'value' => $rate['amount']],
+            ],
+            $data['taxRates'],
+        ));
+
+        return $refund;
     }
 }

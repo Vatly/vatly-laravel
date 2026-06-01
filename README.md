@@ -63,7 +63,7 @@ Pin to an exact version during alpha — the API will change.
    php artisan migrate
    ```
 
-   This adds a `vatly_id` column to your users table plus `vatly_subscriptions`, `vatly_orders`, and `vatly_webhook_calls` tables.
+   This adds a `vatly_id` column to your users table plus `vatly_subscriptions`, `vatly_orders`, `vatly_refunds`, and `vatly_webhook_calls` tables.
 
 4. **Add the `Billable` trait to your User model:**
 
@@ -140,12 +140,19 @@ Event::listen(OrderPaid::class, function (OrderPaid $event) {
 Events available:
 
 - `Vatly\Fluent\Events\OrderPaid` — carries `total`, `subtotal`, `taxSummary` (full per-rate breakdown), `currency`, `invoiceNumber`, `paymentMethod`. Materialize local invoices without an extra API call.
+- `Vatly\Fluent\Events\OrderCanceled` — the local order's status is mirrored to `canceled`.
+- `Vatly\Fluent\Events\OrderChargebackReceived` / `OrderChargebackReversed` — dispute signals carrying the affected `orderId` (no local row is mutated; react to suspend/reinstate access).
 - `Vatly\Fluent\Events\PaymentFailed` — same enriched order shape as `OrderPaid`; typically the start of dunning.
+- `Vatly\Fluent\Events\RefundCompleted` / `RefundFailed` / `RefundCanceled` — each with full `taxSummary`; persisted to `vatly_refunds` (see below).
 - `Vatly\Fluent\Events\SubscriptionStarted`
+- `Vatly\Fluent\Events\SubscriptionBillingUpdated` — the stored mandate (`mandate_method` / `mandate_masked_identifier`) is refreshed.
+- `Vatly\Fluent\Events\SubscriptionResumed` — the stored end date is cleared.
 - `Vatly\Fluent\Events\SubscriptionCanceledImmediately`
 - `Vatly\Fluent\Events\SubscriptionCanceledWithGracePeriod`
 - `Vatly\Fluent\Events\LocalSubscriptionCreated`
 - `Vatly\Fluent\Events\UnsupportedWebhookReceived`
+
+Refund webhooks (`refund.completed` / `refund.failed` / `refund.canceled`) are persisted to the `vatly_refunds` table via the bundled `Refund` model and `EloquentRefundRepository`. Chargeback events ship no built-in persistence — Vatly's public order status doesn't change on a chargeback, so wire your own listener if you need to suspend/reinstate access.
 
 The webhook route is named `vatly.webhook` — reach it with `route('vatly.webhook')`.
 

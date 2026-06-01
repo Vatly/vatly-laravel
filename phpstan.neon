@@ -36,6 +36,9 @@ parameters:
         -
             message: '#^Method Vatly\\Laravel\\Models\\Subscription::owner\(\) should return Illuminate\\Database\\Eloquent\\Relations\\MorphTo.+ but returns .+\.$#'
             path: src/Models/Subscription.php
+        -
+            message: '#^Method Vatly\\Laravel\\Models\\Refund::owner\(\) should return Illuminate\\Database\\Eloquent\\Relations\\MorphTo.+ but returns .+\.$#'
+            path: src/Models/Refund.php
 
         # Model uses Billable trait which adds vatlyId() method
         -
