@@ -9,6 +9,7 @@ use Vatly\Fluent\Contracts\ConfigurationInterface;
 use Vatly\Fluent\Contracts\CustomerBindingRepository;
 use Vatly\Fluent\Contracts\EventDispatcherInterface;
 use Vatly\Fluent\Contracts\OrderRepositoryInterface;
+use Vatly\Fluent\Contracts\RefundRepositoryInterface;
 use Vatly\Fluent\Contracts\SubscriptionRepositoryInterface;
 use Vatly\Fluent\Contracts\WebhookCallRepositoryInterface;
 use Vatly\Fluent\Vatly;
@@ -17,6 +18,7 @@ use Vatly\Fluent\Wiring;
 use Vatly\Laravel\Events\LaravelEventDispatcher;
 use Vatly\Laravel\Repositories\EloquentCustomerBindingRepository;
 use Vatly\Laravel\Repositories\EloquentOrderRepository;
+use Vatly\Laravel\Repositories\EloquentRefundRepository;
 use Vatly\Laravel\Repositories\EloquentSubscriptionRepository;
 use Vatly\Laravel\Repositories\EloquentWebhookCallRepository;
 
@@ -31,6 +33,7 @@ class VatlyServiceProvider extends ServiceProvider
         $this->app->bind(ConfigurationInterface::class, VatlyConfig::class);
         $this->app->bind(SubscriptionRepositoryInterface::class, EloquentSubscriptionRepository::class);
         $this->app->bind(OrderRepositoryInterface::class, EloquentOrderRepository::class);
+        $this->app->bind(RefundRepositoryInterface::class, EloquentRefundRepository::class);
         $this->app->bind(WebhookCallRepositoryInterface::class, EloquentWebhookCallRepository::class);
         $this->app->bind(CustomerBindingRepository::class, EloquentCustomerBindingRepository::class);
         $this->app->bind(EventDispatcherInterface::class, LaravelEventDispatcher::class);
@@ -40,6 +43,7 @@ class VatlyServiceProvider extends ServiceProvider
             config: $app->make(ConfigurationInterface::class),
             subscriptions: $app->make(SubscriptionRepositoryInterface::class),
             orders: $app->make(OrderRepositoryInterface::class),
+            refunds: $app->make(RefundRepositoryInterface::class),
             webhookCalls: $app->make(WebhookCallRepositoryInterface::class),
             events: $app->make(EventDispatcherInterface::class),
             customerBindings: $app->make(CustomerBindingRepository::class),
@@ -77,6 +81,7 @@ class VatlyServiceProvider extends ServiceProvider
             __DIR__.'/../database/migrations/create_vatly_subscriptions_table.php.stub' => $this->getMigrationFileName('create_vatly_subscriptions_table.php'),
             __DIR__.'/../database/migrations/create_vatly_webhook_calls_table.php.stub' => $this->getMigrationFileName('create_vatly_webhook_calls_table.php'),
             __DIR__.'/../database/migrations/create_vatly_orders_table.php.stub' => $this->getMigrationFileName('create_vatly_orders_table.php'),
+            __DIR__.'/../database/migrations/create_vatly_refunds_table.php.stub' => $this->getMigrationFileName('create_vatly_refunds_table.php'),
         ], 'vatly-migrations');
     }
 
