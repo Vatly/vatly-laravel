@@ -383,6 +383,39 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
         );
     }
 
+    public function test_it_stamps_ends_at_when_a_grace_period_completes_from_webhook(): void
+    {
+        $user = User::factory()->create(['vatly_id' => 'customer_abc']);
+
+        // Simulate a subscription whose `canceled_with_grace_period` webhook was
+        // missed: the local row never got an `ends_at`, so it still looks active.
+        Subscription::create([
+            'owner_type' => $user->getMorphClass(),
+            'owner_id' => $user->getKey(),
+            'vatly_id' => 'sub_grace',
+            'plan_id' => 'plan_foo',
+            'name' => 'Test Plan',
+            'type' => 'default',
+            'quantity' => 1,
+            'ends_at' => null,
+        ]);
+
+        $response = $this->postWebhookEvent('subscription.cancellation_grace_period_completed', 'sub_grace', 'subscription', [
+            'customerId' => 'customer_abc',
+            'endedAt' => '2026-01-01T00:00:00+00:00',
+        ]);
+
+        $response->assertStatus(201);
+
+        // The EndSubscriptionOnGracePeriodCompleted reaction self-heals the row:
+        // ends_at is stamped to the actual end and the derived state flips to ended.
+        $subscription = Subscription::where('vatly_id', 'sub_grace')->firstOrFail();
+        $this->assertNotNull($subscription->ends_at);
+        $this->assertSame('2026-01-01', $subscription->ends_at->format('Y-m-d'));
+        $this->assertTrue($subscription->isEnded());
+        $this->assertFalse($subscription->isActive());
+    }
+
     public function test_it_cancels_a_subscription_immediately_from_webhook(): void
     {
         $user = User::factory()->create(['vatly_id' => 'customer_abc']);

@@ -160,7 +160,7 @@ Events available:
 - `Vatly\Fluent\Events\SubscriptionResumed` — the stored end date is cleared.
 - `Vatly\Fluent\Events\SubscriptionCanceledImmediately`
 - `Vatly\Fluent\Events\SubscriptionCanceledWithGracePeriod`
-- `Vatly\Fluent\Events\SubscriptionCancellationGracePeriodCompleted` — the grace period set at cancellation has elapsed; carries `customerId`, `subscriptionId`, `endsAt`. No local write (the cancellation already stamped `ends_at`) — listen to flip your own application-level "fully ended" state without polling.
+- `Vatly\Fluent\Events\SubscriptionCancellationGracePeriodCompleted` — the grace period set at cancellation has elapsed; carries `customerId`, `subscriptionId`, `endsAt`. The local subscription's `ends_at` is stamped to the actual end (self-healing a missed `subscription.canceled_with_grace_period` webhook and correcting any drift); also dispatched so you can flip your own application-level "fully ended" state without polling.
 - `Vatly\Fluent\Events\LocalSubscriptionCreated`
 - `Vatly\Fluent\Events\UnsupportedWebhookReceived`
 
