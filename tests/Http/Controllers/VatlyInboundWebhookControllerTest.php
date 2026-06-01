@@ -8,7 +8,12 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Vatly\API\Types\Mandate;
+use Vatly\Fluent\Events\CheckoutCanceled;
+use Vatly\Fluent\Events\CheckoutExpired;
+use Vatly\Fluent\Events\CheckoutFailed;
+use Vatly\Fluent\Events\CheckoutPaid;
 use Vatly\Fluent\Events\PaymentFailed;
+use Vatly\Fluent\Events\SubscriptionCancellationGracePeriodCompleted;
 use Vatly\Laravel\Models\Order;
 use Vatly\Laravel\Models\Refund;
 use Vatly\Laravel\Models\Subscription;
@@ -268,6 +273,113 @@ class VatlyInboundWebhookControllerTest extends BaseTestCase
             PaymentFailed::class,
             fn (PaymentFailed $event): bool => $event->orderId === 'order_failed_2'
                 && $event->customerId === 'customer_abc',
+        );
+    }
+
+    public function test_it_dispatches_the_checkout_paid_event_from_webhook(): void
+    {
+        Event::fake([CheckoutPaid::class]);
+
+        $this->postWebhookEvent('checkout.paid', 'checkout_abc123', 'checkout', [
+            'customerId' => 'customer_abc',
+            'orderId' => 'order_abc123',
+            'status' => 'paid',
+            'metadata' => ['cart' => 'cart_1'],
+        ])->assertStatus(201);
+
+        $this->assertDatabaseCount('vatly_webhook_calls', 1);
+
+        Event::assertDispatched(
+            CheckoutPaid::class,
+            fn (CheckoutPaid $event): bool => $event->checkoutId === 'checkout_abc123'
+                && $event->customerId === 'customer_abc'
+                && $event->orderId === 'order_abc123'
+                && $event->status === 'paid'
+                && $event->metadata === ['cart' => 'cart_1'],
+        );
+    }
+
+    public function test_it_dispatches_the_checkout_failed_event_from_webhook(): void
+    {
+        Event::fake([CheckoutFailed::class]);
+
+        $this->postWebhookEvent('checkout.failed', 'checkout_failed_1', 'checkout', [
+            'customerId' => 'customer_abc',
+            'orderId' => null,
+            'status' => 'failed',
+            'metadata' => ['cart' => 'cart_2'],
+        ])->assertStatus(201);
+
+        $this->assertDatabaseCount('vatly_webhook_calls', 1);
+
+        Event::assertDispatched(
+            CheckoutFailed::class,
+            fn (CheckoutFailed $event): bool => $event->checkoutId === 'checkout_failed_1'
+                && $event->customerId === 'customer_abc'
+                && $event->orderId === null
+                && $event->status === 'failed'
+                && $event->metadata === ['cart' => 'cart_2'],
+        );
+    }
+
+    public function test_it_dispatches_the_checkout_canceled_event_from_webhook(): void
+    {
+        Event::fake([CheckoutCanceled::class]);
+
+        $this->postWebhookEvent('checkout.canceled', 'checkout_canceled_1', 'checkout', [
+            'customerId' => 'customer_abc',
+            'orderId' => null,
+            'status' => 'canceled',
+        ])->assertStatus(201);
+
+        $this->assertDatabaseCount('vatly_webhook_calls', 1);
+
+        Event::assertDispatched(
+            CheckoutCanceled::class,
+            fn (CheckoutCanceled $event): bool => $event->checkoutId === 'checkout_canceled_1'
+                && $event->customerId === 'customer_abc'
+                && $event->orderId === null
+                && $event->status === 'canceled',
+        );
+    }
+
+    public function test_it_dispatches_the_checkout_expired_event_from_webhook(): void
+    {
+        Event::fake([CheckoutExpired::class]);
+
+        $this->postWebhookEvent('checkout.expired', 'checkout_expired_1', 'checkout', [
+            'customerId' => null,
+            'orderId' => null,
+            'status' => 'expired',
+        ])->assertStatus(201);
+
+        $this->assertDatabaseCount('vatly_webhook_calls', 1);
+
+        Event::assertDispatched(
+            CheckoutExpired::class,
+            fn (CheckoutExpired $event): bool => $event->checkoutId === 'checkout_expired_1'
+                && $event->customerId === null
+                && $event->orderId === null
+                && $event->status === 'expired',
+        );
+    }
+
+    public function test_it_dispatches_the_grace_period_completed_event_from_webhook(): void
+    {
+        Event::fake([SubscriptionCancellationGracePeriodCompleted::class]);
+
+        $this->postWebhookEvent('subscription.cancellation_grace_period_completed', 'sub_grace', 'subscription', [
+            'customerId' => 'customer_abc',
+            'endedAt' => '2026-01-01T00:00:00+00:00',
+        ])->assertStatus(201);
+
+        $this->assertDatabaseCount('vatly_webhook_calls', 1);
+
+        Event::assertDispatched(
+            SubscriptionCancellationGracePeriodCompleted::class,
+            fn (SubscriptionCancellationGracePeriodCompleted $event): bool => $event->subscriptionId === 'sub_grace'
+                && $event->customerId === 'customer_abc'
+                && $event->endsAt->format('Y-m-d') === '2026-01-01',
         );
     }
 
