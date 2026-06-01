@@ -7,6 +7,8 @@ namespace Vatly\Laravel\Tests\TestHelpers;
 use Illuminate\Testing\TestResponse;
 use Mockery;
 use ReflectionClass;
+use Vatly\API\Exceptions\ApiException;
+use Vatly\API\Resources\Checkout as ApiCheckout;
 use Vatly\API\Resources\Order as ApiOrder;
 use Vatly\API\Resources\Refund as ApiRefund;
 use Vatly\API\Resources\Subscription as ApiSubscription;
@@ -14,6 +16,7 @@ use Vatly\API\Types\Mandate;
 use Vatly\API\Types\Money;
 use Vatly\API\Types\TaxSummaryCollection;
 use Vatly\API\VatlyApiClient;
+use Vatly\Fluent\Actions\GetCheckout;
 use Vatly\Fluent\Actions\GetOrder;
 use Vatly\Fluent\Actions\GetRefund;
 use Vatly\Fluent\Actions\GetSubscription;
@@ -103,6 +106,55 @@ trait PostsVatlyWebhooks
         $this->writeVatlyPrivate($vatly, 'webhookProcessor', null);
 
         $this->app->forgetInstance(WebhookProcessor::class);
+    }
+
+    /**
+     * Replace the cached `GetCheckout` action on the composition root so the
+     * anonymous-checkout return flow (`claimVatlyCustomerFromReturn`) doesn't
+     * need a real API call. Convenience wrapper around
+     * {@see self::fakeGetCheckouts()} for a single checkout.
+     */
+    protected function fakeGetCheckout(ApiCheckout $checkout): void
+    {
+        $this->fakeGetCheckouts([$checkout->id => $checkout]);
+    }
+
+    /**
+     * Replace the cached `GetCheckout` action with a fake that returns a
+     * different `ApiCheckout` per checkout id — so a multi-tab scenario can
+     * keep several checkout ids in flight at once. An unregistered id throws a
+     * 404 `ApiException`, mirroring the real API for an unknown / out-of-scope
+     * checkout (which fluent maps to "nothing to claim").
+     *
+     * @param  array<string, ApiCheckout>  $checkouts  keyed by checkout id
+     */
+    protected function fakeGetCheckouts(array $checkouts): void
+    {
+        $action = Mockery::mock(GetCheckout::class);
+        $action->shouldReceive('execute')->andReturnUsing(function (string $id) use ($checkouts) {
+            if (isset($checkouts[$id])) {
+                return $checkouts[$id];
+            }
+
+            throw new ApiException("Error 404 executing API call for checkout '{$id}'", 404);
+        });
+
+        $this->writeVatlyPrivate($this->app->make(Vatly::class), 'getCheckout', $action);
+    }
+
+    /**
+     * Build a minimal ApiCheckout for `fakeGetCheckout()` callers.
+     *
+     * @param  array{id: string, customerId?: ?string, status?: string}  $data
+     */
+    protected function buildApiCheckout(array $data): ApiCheckout
+    {
+        $checkout = new ApiCheckout(Mockery::mock(VatlyApiClient::class));
+        $checkout->id = $data['id'];
+        $checkout->customerId = $data['customerId'] ?? null;
+        $checkout->status = $data['status'] ?? 'paid';
+
+        return $checkout;
     }
 
     /**

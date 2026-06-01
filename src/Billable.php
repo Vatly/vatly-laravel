@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Vatly\Laravel;
 
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Http\Request;
 use Vatly\API\Resources\Customer;
 use Vatly\Fluent\Builders\CheckoutBuilder;
 use Vatly\Fluent\Builders\SubscriptionBuilder;
 use Vatly\Fluent\CustomerProfile;
+use Vatly\Fluent\Exceptions\CustomerAlreadyBoundException;
 use Vatly\Fluent\Exceptions\InvalidOrderException;
 use Vatly\Fluent\OrderHandle;
 use Vatly\Fluent\SubscriptionHandle;
@@ -232,6 +234,48 @@ trait Billable
             ->update($ownerAttrs);
 
         return $subscriptions + $orders;
+    }
+
+    /**
+     * Claim an anonymous Vatly customer on the checkout-success redirect back.
+     *
+     * Reads the checkout id from the request query — Vatly substitutes it into
+     * the redirect URL via the `{CHECKOUT_ID}` placeholder you set when building
+     * the checkout (e.g. `route('vatly.return').'?checkout_id={CHECKOUT_ID}'`) —
+     * resolves the checkout's Vatly customer id, and, if a customer is attached,
+     * runs {@see self::claimVatlyCustomer()} to bind it and re-attribute this
+     * entity's previously-anonymous orders and subscriptions.
+     *
+     * Multi-tab safe by construction: each tab carries its own checkout id in
+     * its own redirect URL, so concurrent checkouts resolve independently —
+     * there is no shared session/cookie carrier whose last write wins.
+     *
+     * Returns whether a claim happened. Returns false (without throwing) for a
+     * missing / unknown checkout id, or a checkout with no customer yet — so it
+     * is safe to call unconditionally on the return route. A cross-host conflict
+     * (the id already bound to a different customer) still throws
+     * {@see CustomerAlreadyBoundException}.
+     *
+     * Out of scope: buyers who never return via the redirect link (closed tab,
+     * different device). That is the email-recovery story, handled separately.
+     */
+    public function claimVatlyCustomerFromReturn(Request $request, string $key = 'checkout_id'): bool
+    {
+        $checkoutId = $request->query($key);
+
+        if (! is_string($checkoutId) || $checkoutId === '') {
+            return false;
+        }
+
+        $customerId = app(Vatly::class)->customerIdFromCheckout($checkoutId);
+
+        if ($customerId === null) {
+            return false;
+        }
+
+        $this->claimVatlyCustomer($customerId);
+
+        return true;
     }
 
     // --- Static finders ---
