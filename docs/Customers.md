@@ -100,6 +100,8 @@ Under the hood `claimVatlyCustomerFromReturn()` resolves the checkout's customer
 2. Saves the model.
 3. Backfills `owner_type` / `owner_id` on every `vatly_subscriptions` and `vatly_orders` row that carries the same `customer_id` but had no owner yet.
 
+The `order.paid` / `subscription.started` webhook usually lands *before* the buyer is redirected back, so those rows already exist (with `owner_id = null`) by the time you claim — step 3 simply backfills them. The reverse order works too: if the claim runs first, it binds the customer, and a later webhook for the same `customer_id` finds the binding and writes `owner_id` directly. Either way the purchase ends up attributed.
+
 If you already hold the `cus_…` by other means, you can still call `claimVatlyCustomer($vatlyCustomerId)` directly; it returns the number of rows re-attributed.
 
 > **Out of scope:** buyers who never come back via the redirect link (closed the tab, switched device). Recovering those is the email-based recovery story — a separate concern this helper does not cover.
